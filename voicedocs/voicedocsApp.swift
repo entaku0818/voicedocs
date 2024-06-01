@@ -8,7 +8,7 @@
 import SwiftUI
 
 @main
-struct voicedocsApp: App {
+struct SpeechRecognitionApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
