@@ -21,10 +21,12 @@ struct VoiceMemoListView: View {
         NavigationView {
             VStack {
                 List(voiceMemos, id: \.id) { memo in
-                    VStack(alignment: .leading) {
-                        Text(memo.title)
-                            .font(.headline)
-                        Text(memo.date, style: .relative)
+                    NavigationLink(destination: VoiceMemoDetailView(memo: memo)) {
+                        VStack(alignment: .leading) {
+                            Text(memo.title)
+                                .font(.headline)
+                            Text(memo.date, style: .relative)
+                        }
                     }
                 }
                 .navigationTitle("Voice Memos")
@@ -43,10 +45,6 @@ struct VoiceMemoListView: View {
             }
         }
     }
-}
-
-#Preview {
-    VoiceMemoListView(voiceMemoController: FakeVoiceMemoController())
 }
 
 

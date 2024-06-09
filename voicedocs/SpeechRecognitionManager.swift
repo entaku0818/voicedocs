@@ -59,7 +59,9 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
         }
 
         let recordingFormat = inputNode.outputFormat(forBus: 0)
-        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("m4a")
+        let fileManager = FileManager.default
+        let documentsURL = try fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        let fileURL = documentsURL.appendingPathComponent(UUID().uuidString).appendingPathExtension("m4a")
         audioFile = try AVAudioFile(forWriting: fileURL, settings: recordingFormat.settings)
         self.audioFileURL = fileURL
 

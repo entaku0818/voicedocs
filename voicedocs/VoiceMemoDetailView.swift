@@ -59,8 +59,8 @@ struct VoiceMemoDetailView: View {
         transcription = "トランスクリプションを取得中..."
 
         do {
-            let whisper = try await WhisperKit()
-            if let result = try await whisper.transcribe(audioPath: audioURL.path, decodeOptions: DecodingOptions(language: "ja"))?.text {
+            let whisper = try? await WhisperKit(model: "base")
+            if let result = try await whisper?.transcribe(audioPath: audioURL.path, decodeOptions: DecodingOptions(language: "ja"))?.text {
                 transcription = result
             } else {
                 transcription = "トランスクリプションを取得できませんでした。"
