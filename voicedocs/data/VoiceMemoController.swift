@@ -3,7 +3,13 @@
 import Foundation
 import CoreData
 
-struct VoiceMemoController {
+
+protocol VoiceMemoControllerProtocol {
+    func saveVoiceMemo(title: String, text: String, filePath: String?)
+    func fetchVoiceMemos() -> [VoiceMemo]
+}
+
+struct VoiceMemoController:VoiceMemoControllerProtocol {
     static let shared = VoiceMemoController()
 
     let container: NSPersistentContainer

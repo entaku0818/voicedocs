@@ -9,10 +9,12 @@ import Foundation
 import SwiftUI
 
 struct VoiceMemoListView: View {
+    private var voiceMemoController: VoiceMemoControllerProtocol
     @State private var voiceMemos: [VoiceMemo] = []
 
-    init() {
-        self.voiceMemos = VoiceMemoController.shared.fetchVoiceMemos()
+    init(voiceMemoController: VoiceMemoControllerProtocol) {
+        self.voiceMemoController = voiceMemoController
+        self._voiceMemos = State(initialValue: voiceMemoController.fetchVoiceMemos())
     }
 
     var body: some View {
@@ -20,17 +22,16 @@ struct VoiceMemoListView: View {
             VStack(alignment: .leading) {
                 Text(memo.title)
                     .font(.headline)
-                Text(memo.text)
-                Text(memo.date, style: .date)
+                Text(memo.date, style: .relative)
             }
         }
         .navigationTitle("Voice Memos")
         .onAppear {
-            self.voiceMemos = VoiceMemoController.shared.fetchVoiceMemos()
+            self.voiceMemos = voiceMemoController.fetchVoiceMemos()
         }
     }
 }
 
 #Preview {
-    VoiceMemoListView()
+    VoiceMemoListView(voiceMemoController: FakeVoiceMemoController())
 }
