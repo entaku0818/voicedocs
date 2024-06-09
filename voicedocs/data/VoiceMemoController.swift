@@ -15,7 +15,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
     let container: NSPersistentContainer
 
     init() {
-        container = NSPersistentContainer(name: "voiceMemo")
+        container = NSPersistentContainer(name: "VoiceMemoModel")
         container.loadPersistentStores { description, error in
             if let error = error {
                 fatalError("Unable to load persistent stores: \(error)")

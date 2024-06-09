@@ -11,7 +11,7 @@ import SwiftUI
 struct SpeechRecognitionApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            VoiceMemoListView(voiceMemoController: VoiceMemoController())
         }
     }
 }

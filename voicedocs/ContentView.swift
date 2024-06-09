@@ -16,7 +16,7 @@ struct ContentView: View {
             Button(action: {
                 Task {
                     if isRecording {
-                        speechRecognitionManager.stopRecording()
+                        let result = speechRecognitionManager.stopRecording()
                     } else {
                         do {
                             try await speechRecognitionManager.startRecording()

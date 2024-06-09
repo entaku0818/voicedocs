@@ -12,6 +12,9 @@ import Combine
 import AVFoundation
 import Speech
 import Combine
+import AVFoundation
+import Speech
+import Combine
 
 class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "ja-JP"))
@@ -22,6 +25,8 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
 
     @Published var transcribedText: String = ""
     @Published var audioLevel: Float = 0.0 // 音の大きさを表すプロパティ
+
+    private var audioFileURL: URL?
 
     func startRecording() async throws {
         recognitionTask?.cancel()
@@ -48,12 +53,15 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
 
                 self.recognitionRequest = nil
                 self.recognitionTask = nil
+
+                self.saveVoiceMemo()
             }
         }
 
         let recordingFormat = inputNode.outputFormat(forBus: 0)
         let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("m4a")
         audioFile = try AVAudioFile(forWriting: fileURL, settings: recordingFormat.settings)
+        self.audioFileURL = fileURL
 
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, when in
             self.recognitionRequest?.append(buffer)
@@ -66,13 +74,9 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
         try audioEngine.start()
     }
 
-    func stopRecording() -> URL? {
+    func stopRecording() {
         audioEngine.stop()
         recognitionRequest?.endAudio()
-
-        let fileURL = audioFile?.url
-        audioFile = nil
-        return fileURL
     }
 
     private func updateAudioLevel(buffer: AVAudioPCMBuffer) {
@@ -86,5 +90,10 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
         DispatchQueue.main.async {
             self.audioLevel = avgPower
         }
+    }
+
+    private func saveVoiceMemo() {
+        guard let audioFileURL = audioFileURL else { return }
+        VoiceMemoController.shared.saveVoiceMemo(title: "新規のノート", text: transcribedText, filePath: audioFileURL.path)
     }
 }

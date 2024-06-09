@@ -18,7 +18,7 @@
 		6190047C2C1586E60007A894 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6190047B2C1586E60007A894 /* WhisperKit */; };
 		6190047F2C158E170007A894 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 6190047E2C158E170007A894 /* ComposableArchitecture */; };
 		619004842C1597340007A894 /* VoiceMemoController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 619004832C1597340007A894 /* VoiceMemoController.swift */; };
-		619004872C1598B30007A894 /* Voicememo.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 619004852C1598B30007A894 /* Voicememo.xcdatamodeld */; };
+		619004872C1598B30007A894 /* VoiceMemoModel.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 619004852C1598B30007A894 /* VoiceMemoModel.xcdatamodeld */; };
 		619004892C1599F20007A894 /* VoiceMemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 619004882C1599F20007A894 /* VoiceMemo.swift */; };
 		6190048B2C159B860007A894 /* VoiceMemoListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6190048A2C159B860007A894 /* VoiceMemoListView.swift */; };
 		6190048D2C159D110007A894 /* FakeVoiceMemoController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6190048C2C159D110007A894 /* FakeVoiceMemoController.swift */; };
@@ -155,7 +155,7 @@
 			isa = PBXGroup;
 			children = (
 				619004832C1597340007A894 /* VoiceMemoController.swift */,
-				619004852C1598B30007A894 /* Voicememo.xcdatamodeld */,
+				619004852C1598B30007A894 /* VoiceMemoModel.xcdatamodeld */,
 				619004882C1599F20007A894 /* VoiceMemo.swift */,
 				6190048C2C159D110007A894 /* FakeVoiceMemoController.swift */,
 			);
@@ -300,7 +300,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				619004872C1598B30007A894 /* Voicememo.xcdatamodeld in Sources */,
+				619004872C1598B30007A894 /* VoiceMemoModel.xcdatamodeld in Sources */,
 				619004842C1597340007A894 /* VoiceMemoController.swift in Sources */,
 				6190048B2C159B860007A894 /* VoiceMemoListView.swift in Sources */,
 				6190048F2C15A0050007A894 /* VoiceMemoDetailView.swift in Sources */,
@@ -682,14 +682,13 @@
 /* End XCSwiftPackageProductDependency section */
 
 /* Begin XCVersionGroup section */
-		619004852C1598B30007A894 /* Voicememo.xcdatamodeld */ = {
+		619004852C1598B30007A894 /* VoiceMemoModel.xcdatamodeld */ = {
 			isa = XCVersionGroup;
 			children = (
 				619004862C1598B30007A894 /* Voicememo.xcdatamodel */,
 			);
 			currentVersion = 619004862C1598B30007A894 /* Voicememo.xcdatamodel */;
-			name = Voicememo.xcdatamodeld;
-			path = /Users/entaku/voicedocs/voicedocs/data/Voicememo.xcdatamodeld;
+			path = VoiceMemoModel.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;
 		};
