@@ -56,7 +56,7 @@ struct AudioLevelView: View {
                 Rectangle()
                     .foregroundColor(.blue)
                     .frame(width: normalizedWidth(for: audioLevel, in: geometry.size.width))
-                    .animation(.easeInOut(duration: 0.2), value: audioLevel) 
+                    .animation(.easeInOut(duration: 0.2), value: audioLevel)
             }
             .cornerRadius(10)
         }

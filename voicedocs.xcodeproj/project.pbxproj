@@ -16,6 +16,11 @@
 		617648612C0B57EF009A151D /* voicedocsUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 617648602C0B57EF009A151D /* voicedocsUITestsLaunchTests.swift */; };
 		6176486F2C0B5969009A151D /* SpeechRecognitionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6176486E2C0B5969009A151D /* SpeechRecognitionManager.swift */; };
 		6190047C2C1586E60007A894 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6190047B2C1586E60007A894 /* WhisperKit */; };
+		6190047F2C158E170007A894 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 6190047E2C158E170007A894 /* ComposableArchitecture */; };
+		619004812C1596900007A894 /* SwiftUIView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 619004802C1596900007A894 /* SwiftUIView.swift */; };
+		619004842C1597340007A894 /* VoiceMemoController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 619004832C1597340007A894 /* VoiceMemoController.swift */; };
+		619004872C1598B30007A894 /* Voicememo.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 619004852C1598B30007A894 /* Voicememo.xcdatamodeld */; };
+		619004892C1599F20007A894 /* VoiceMemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 619004882C1599F20007A894 /* VoiceMemo.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,6 +53,10 @@
 		617648602C0B57EF009A151D /* voicedocsUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = voicedocsUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		6176486D2C0B5939009A151D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		6176486E2C0B5969009A151D /* SpeechRecognitionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognitionManager.swift; sourceTree = "<group>"; };
+		619004802C1596900007A894 /* SwiftUIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUIView.swift; sourceTree = "<group>"; };
+		619004832C1597340007A894 /* VoiceMemoController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemoController.swift; sourceTree = "<group>"; };
+		619004862C1598B30007A894 /* Voicememo.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Voicememo.xcdatamodel; sourceTree = "<group>"; };
+		619004882C1599F20007A894 /* VoiceMemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemo.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,6 +64,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6190047F2C158E170007A894 /* ComposableArchitecture in Frameworks */,
 				6190047C2C1586E60007A894 /* WhisperKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -99,12 +109,14 @@
 		617648422C0B57EE009A151D /* voicedocs */ = {
 			isa = PBXGroup;
 			children = (
+				619004822C15972B0007A894 /* data */,
 				6176486D2C0B5939009A151D /* Info.plist */,
 				617648432C0B57EE009A151D /* voicedocsApp.swift */,
 				617648452C0B57EE009A151D /* ContentView.swift */,
 				617648472C0B57EF009A151D /* Assets.xcassets */,
 				617648492C0B57EF009A151D /* Preview Content */,
 				6176486E2C0B5969009A151D /* SpeechRecognitionManager.swift */,
+				619004802C1596900007A894 /* SwiftUIView.swift */,
 			);
 			path = voicedocs;
 			sourceTree = "<group>";
@@ -134,6 +146,16 @@
 			path = voicedocsUITests;
 			sourceTree = "<group>";
 		};
+		619004822C15972B0007A894 /* data */ = {
+			isa = PBXGroup;
+			children = (
+				619004832C1597340007A894 /* VoiceMemoController.swift */,
+				619004852C1598B30007A894 /* Voicememo.xcdatamodeld */,
+				619004882C1599F20007A894 /* VoiceMemo.swift */,
+			);
+			path = data;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -152,6 +174,7 @@
 			name = voicedocs;
 			packageProductDependencies = (
 				6190047B2C1586E60007A894 /* WhisperKit */,
+				6190047E2C158E170007A894 /* ComposableArchitecture */,
 			);
 			productName = voicedocs;
 			productReference = 617648402C0B57EE009A151D /* voicedocs.app */;
@@ -227,6 +250,7 @@
 			mainGroup = 617648372C0B57EE009A151D;
 			packageReferences = (
 				6190047A2C1586E60007A894 /* XCRemoteSwiftPackageReference "whisperkit" */,
+				6190047D2C158E170007A894 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
 			);
 			productRefGroup = 617648412C0B57EE009A151D /* Products */;
 			projectDirPath = "";
@@ -270,8 +294,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				619004872C1598B30007A894 /* Voicememo.xcdatamodeld in Sources */,
+				619004842C1597340007A894 /* VoiceMemoController.swift in Sources */,
+				619004892C1599F20007A894 /* VoiceMemo.swift in Sources */,
 				617648462C0B57EE009A151D /* ContentView.swift in Sources */,
 				6176486F2C0B5969009A151D /* SpeechRecognitionManager.swift in Sources */,
+				619004812C1596900007A894 /* SwiftUIView.swift in Sources */,
 				617648442C0B57EE009A151D /* voicedocsApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -361,7 +389,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -418,7 +446,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -453,7 +481,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.entaku.voicedocs;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -487,7 +515,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.entaku.voicedocs;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -622,6 +650,14 @@
 				kind = branch;
 			};
 		};
+		6190047D2C158E170007A894 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.11.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -630,7 +666,26 @@
 			package = 6190047A2C1586E60007A894 /* XCRemoteSwiftPackageReference "whisperkit" */;
 			productName = WhisperKit;
 		};
+		6190047E2C158E170007A894 /* ComposableArchitecture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6190047D2C158E170007A894 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
+			productName = ComposableArchitecture;
+		};
 /* End XCSwiftPackageProductDependency section */
+
+/* Begin XCVersionGroup section */
+		619004852C1598B30007A894 /* Voicememo.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				619004862C1598B30007A894 /* Voicememo.xcdatamodel */,
+			);
+			currentVersion = 619004862C1598B30007A894 /* Voicememo.xcdatamodel */;
+			name = Voicememo.xcdatamodeld;
+			path = /Users/entaku/voicedocs/voicedocs/data/Voicememo.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
 	};
 	rootObject = 617648382C0B57EE009A151D /* Project object */;
 }
