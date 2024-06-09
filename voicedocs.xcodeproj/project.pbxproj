@@ -17,10 +17,10 @@
 		6176486F2C0B5969009A151D /* SpeechRecognitionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6176486E2C0B5969009A151D /* SpeechRecognitionManager.swift */; };
 		6190047C2C1586E60007A894 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6190047B2C1586E60007A894 /* WhisperKit */; };
 		6190047F2C158E170007A894 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 6190047E2C158E170007A894 /* ComposableArchitecture */; };
-		619004812C1596900007A894 /* SwiftUIView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 619004802C1596900007A894 /* SwiftUIView.swift */; };
 		619004842C1597340007A894 /* VoiceMemoController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 619004832C1597340007A894 /* VoiceMemoController.swift */; };
 		619004872C1598B30007A894 /* Voicememo.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 619004852C1598B30007A894 /* Voicememo.xcdatamodeld */; };
 		619004892C1599F20007A894 /* VoiceMemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 619004882C1599F20007A894 /* VoiceMemo.swift */; };
+		6190048B2C159B860007A894 /* VoiceMemoListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6190048A2C159B860007A894 /* VoiceMemoListView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,10 +53,10 @@
 		617648602C0B57EF009A151D /* voicedocsUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = voicedocsUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		6176486D2C0B5939009A151D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		6176486E2C0B5969009A151D /* SpeechRecognitionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognitionManager.swift; sourceTree = "<group>"; };
-		619004802C1596900007A894 /* SwiftUIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUIView.swift; sourceTree = "<group>"; };
 		619004832C1597340007A894 /* VoiceMemoController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemoController.swift; sourceTree = "<group>"; };
 		619004862C1598B30007A894 /* Voicememo.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Voicememo.xcdatamodel; sourceTree = "<group>"; };
 		619004882C1599F20007A894 /* VoiceMemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemo.swift; sourceTree = "<group>"; };
+		6190048A2C159B860007A894 /* VoiceMemoListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemoListView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -116,7 +116,7 @@
 				617648472C0B57EF009A151D /* Assets.xcassets */,
 				617648492C0B57EF009A151D /* Preview Content */,
 				6176486E2C0B5969009A151D /* SpeechRecognitionManager.swift */,
-				619004802C1596900007A894 /* SwiftUIView.swift */,
+				6190048A2C159B860007A894 /* VoiceMemoListView.swift */,
 			);
 			path = voicedocs;
 			sourceTree = "<group>";
@@ -296,10 +296,10 @@
 			files = (
 				619004872C1598B30007A894 /* Voicememo.xcdatamodeld in Sources */,
 				619004842C1597340007A894 /* VoiceMemoController.swift in Sources */,
+				6190048B2C159B860007A894 /* VoiceMemoListView.swift in Sources */,
 				619004892C1599F20007A894 /* VoiceMemo.swift in Sources */,
 				617648462C0B57EE009A151D /* ContentView.swift in Sources */,
 				6176486F2C0B5969009A151D /* SpeechRecognitionManager.swift in Sources */,
-				619004812C1596900007A894 /* SwiftUIView.swift in Sources */,
 				617648442C0B57EE009A151D /* voicedocsApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

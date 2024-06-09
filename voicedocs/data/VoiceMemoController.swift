@@ -59,7 +59,7 @@ struct VoiceMemoController {
                     title: memo.title ?? "",
                     text: memo.text ?? "",
                     date: memo.createdAt ?? Date(),
-                    filePath: memo.voiceFilePath
+                    filePath: memo.voiceFilePath ?? ""
                 )
             }
         } catch {
