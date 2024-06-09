@@ -15,6 +15,7 @@
 		6176485F2C0B57EF009A151D /* voicedocsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6176485E2C0B57EF009A151D /* voicedocsUITests.swift */; };
 		617648612C0B57EF009A151D /* voicedocsUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 617648602C0B57EF009A151D /* voicedocsUITestsLaunchTests.swift */; };
 		6176486F2C0B5969009A151D /* SpeechRecognitionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6176486E2C0B5969009A151D /* SpeechRecognitionManager.swift */; };
+		6190047C2C1586E60007A894 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6190047B2C1586E60007A894 /* WhisperKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -54,6 +55,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6190047C2C1586E60007A894 /* WhisperKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -148,6 +150,9 @@
 			dependencies = (
 			);
 			name = voicedocs;
+			packageProductDependencies = (
+				6190047B2C1586E60007A894 /* WhisperKit */,
+			);
 			productName = voicedocs;
 			productReference = 617648402C0B57EE009A151D /* voicedocs.app */;
 			productType = "com.apple.product-type.application";
@@ -220,6 +225,9 @@
 				Base,
 			);
 			mainGroup = 617648372C0B57EE009A151D;
+			packageReferences = (
+				6190047A2C1586E60007A894 /* XCRemoteSwiftPackageReference "whisperkit" */,
+			);
 			productRefGroup = 617648412C0B57EE009A151D /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -604,6 +612,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		6190047A2C1586E60007A894 /* XCRemoteSwiftPackageReference "whisperkit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/argmaxinc/whisperkit";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		6190047B2C1586E60007A894 /* WhisperKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6190047A2C1586E60007A894 /* XCRemoteSwiftPackageReference "whisperkit" */;
+			productName = WhisperKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 617648382C0B57EE009A151D /* Project object */;
 }
