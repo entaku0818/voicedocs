@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  VoiceMemoListView.swift
 //  voicedocs
 //
 //  Created by 遠藤拓弥 on 2024/06/09.
@@ -18,19 +18,37 @@ struct VoiceMemoListView: View {
     }
 
     var body: some View {
-        List(voiceMemos, id: \.id) { memo in
-            VStack(alignment: .leading) {
-                Text(memo.title)
-                    .font(.headline)
-                Text(memo.date, style: .relative)
+        NavigationView {
+            VStack {
+                List(voiceMemos, id: \.id) { memo in
+                    VStack(alignment: .leading) {
+                        Text(memo.title)
+                            .font(.headline)
+                        Text(memo.date, style: .relative)
+                    }
+                }
+                .navigationTitle("Voice Memos")
+
+                NavigationLink(destination: ContentView()) {
+                    Text("Record New Memo")
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                        .padding()
+                }
             }
-        }
-        .navigationTitle("Voice Memos")
-        .onAppear {
-            self.voiceMemos = voiceMemoController.fetchVoiceMemos()
+            .onAppear {
+                self.voiceMemos = voiceMemoController.fetchVoiceMemos()
+            }
         }
     }
 }
+
+#Preview {
+    VoiceMemoListView(voiceMemoController: FakeVoiceMemoController())
+}
+
 
 #Preview {
     VoiceMemoListView(voiceMemoController: FakeVoiceMemoController())

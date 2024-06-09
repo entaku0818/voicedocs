@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var speechRecognitionManager = SpeechRecognitionManager()
+    @State private var isRecording = false
 
     var body: some View {
         VStack {
@@ -12,32 +13,25 @@ struct ContentView: View {
                 .frame(height: 20)
                 .padding()
 
-            HStack {
-                Button(action: {
-                    Task {
+            Button(action: {
+                Task {
+                    if isRecording {
+                        speechRecognitionManager.stopRecording()
+                    } else {
                         do {
                             try await speechRecognitionManager.startRecording()
                         } catch {
                             print("Failed to start recording: \(error)")
                         }
                     }
-                }) {
-                    Text("Start Recording")
-                        .padding()
-                        .background(Color.green)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
+                    isRecording.toggle()
                 }
-
-                Button(action: {
-                    speechRecognitionManager.stopRecording()
-                }) {
-                    Text("Stop Recording")
-                        .padding()
-                        .background(Color.red)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-                }
+            }) {
+                Text(isRecording ? "Stop Recording" : "Start Recording")
+                    .padding()
+                    .background(isRecording ? Color.red : Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
             }
         }
         .padding()
