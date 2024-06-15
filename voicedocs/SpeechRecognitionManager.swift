@@ -9,12 +9,7 @@ import Foundation
 import Speech
 import AVFoundation
 import Combine
-import AVFoundation
-import Speech
-import Combine
-import AVFoundation
-import Speech
-import Combine
+
 
 class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "ja-JP"))

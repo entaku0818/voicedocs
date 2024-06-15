@@ -8,58 +8,74 @@
 import Foundation
 import SwiftUI
 import WhisperKit
+import AVFoundation
 
 struct VoiceMemoDetailView: View {
     var memo: VoiceMemo
     @State private var transcription: String = "トランスクリプションを開始するには、以下のボタンを押してください。"
     @State private var isTranscribing = false
+    @State private var isPlaying = false
+    @State private var player: AVPlayer?
 
     var body: some View {
         VStack(alignment: .leading) {
-            Text(memo.title)
-                .font(.largeTitle)
-                .padding()
-
             Text(memo.text)
-                .padding()
 
             Text(transcription)
                 .padding()
                 .background(Color.gray.opacity(0.2))
                 .cornerRadius(8)
-                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button(action: {
-                Task {
-                    await transcribeAudio()
+            HStack {
+                Button(action: {
+                    Task {
+                        await transcribeAudio()
+                    }
+                }) {
+                    Text(isTranscribing ? "トランスクリプション中..." : "トランスクリプションを開始")
+                        .padding()
+                        .background(isTranscribing ? Color.gray : Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
                 }
-            }) {
-                Text(isTranscribing ? "トランスクリプション中..." : "トランスクリプションを開始")
-                    .padding()
-                    .background(isTranscribing ? Color.gray : Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
+                .disabled(isTranscribing)
+
+                Button(action: {
+                    togglePlayback()
+                }) {
+                    Text(isPlaying ? "停止" : "再生")
+                        .padding()
+                        .background(isPlaying ? Color.red : Color.green)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                }
+
             }
-            .disabled(isTranscribing)
-            .padding()
 
             Spacer()
         }
-        .navigationTitle("Memo Details")
-        .padding()
+        .navigationTitle(memo.title)
+        .padding(.horizontal, 20)
+        .onDisappear {
+            stopPlayback()
+        }
     }
 
     private func transcribeAudio() async {
-        guard let audioURL = URL(string: memo.filePath) else {
-            transcription = "音声ファイルのパスが無効です。"
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            transcription = "ドキュメントディレクトリのパスを取得できませんでした。"
             return
         }
+
+        let filePathComponent = (memo.filePath as NSString).lastPathComponent
+        let audioURL = documentsDirectory.appendingPathComponent(filePathComponent)
 
         isTranscribing = true
         transcription = "トランスクリプションを取得中..."
 
         do {
-            let whisper = try? await WhisperKit(model: "base")
+            let whisper = try? await WhisperKit(model: "large-v3")
             if let result = try await whisper?.transcribe(audioPath: audioURL.path, decodeOptions: DecodingOptions(language: "ja"))?.text {
                 transcription = result
             } else {
@@ -70,6 +86,27 @@ struct VoiceMemoDetailView: View {
         }
 
         isTranscribing = false
+    }
+
+    private func togglePlayback() {
+        if isPlaying {
+            player?.pause()
+        } else {
+            guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                return
+            }
+            let filePathComponent = (memo.filePath as NSString).lastPathComponent
+            let audioURL = documentsDirectory.appendingPathComponent(filePathComponent)
+
+            player = AVPlayer(url: audioURL)
+            player?.play()
+        }
+        isPlaying.toggle()
+    }
+
+    private func stopPlayback() {
+        player?.pause()
+        isPlaying = false
     }
 }
 
