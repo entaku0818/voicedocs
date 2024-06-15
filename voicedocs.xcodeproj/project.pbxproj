@@ -15,6 +15,7 @@
 		6176485F2C0B57EF009A151D /* voicedocsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6176485E2C0B57EF009A151D /* voicedocsUITests.swift */; };
 		617648612C0B57EF009A151D /* voicedocsUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 617648602C0B57EF009A151D /* voicedocsUITestsLaunchTests.swift */; };
 		6176486F2C0B5969009A151D /* SpeechRecognitionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6176486E2C0B5969009A151D /* SpeechRecognitionManager.swift */; };
+		617F53A92C1DC05D008D5316 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 617F53A82C1DC05D008D5316 /* Localizable.xcstrings */; };
 		6190047C2C1586E60007A894 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6190047B2C1586E60007A894 /* WhisperKit */; };
 		6190047F2C158E170007A894 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 6190047E2C158E170007A894 /* ComposableArchitecture */; };
 		619004842C1597340007A894 /* VoiceMemoController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 619004832C1597340007A894 /* VoiceMemoController.swift */; };
@@ -55,6 +56,7 @@
 		617648602C0B57EF009A151D /* voicedocsUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = voicedocsUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		6176486D2C0B5939009A151D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		6176486E2C0B5969009A151D /* SpeechRecognitionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognitionManager.swift; sourceTree = "<group>"; };
+		617F53A82C1DC05D008D5316 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		619004832C1597340007A894 /* VoiceMemoController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemoController.swift; sourceTree = "<group>"; };
 		619004862C1598B30007A894 /* Voicememo.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Voicememo.xcdatamodel; sourceTree = "<group>"; };
 		619004882C1599F20007A894 /* VoiceMemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemo.swift; sourceTree = "<group>"; };
@@ -93,6 +95,7 @@
 		617648372C0B57EE009A151D = {
 			isa = PBXGroup;
 			children = (
+				617F53A82C1DC05D008D5316 /* Localizable.xcstrings */,
 				617648422C0B57EE009A151D /* voicedocs */,
 				617648532C0B57EF009A151D /* voicedocsTests */,
 				6176485D2C0B57EF009A151D /* voicedocsUITests */,
@@ -252,6 +255,7 @@
 			knownRegions = (
 				en,
 				Base,
+				ja,
 			);
 			mainGroup = 617648372C0B57EE009A151D;
 			packageReferences = (
@@ -276,6 +280,7 @@
 			files = (
 				6176484B2C0B57EF009A151D /* Preview Assets.xcassets in Resources */,
 				617648482C0B57EF009A151D /* Assets.xcassets in Resources */,
+				617F53A92C1DC05D008D5316 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -350,6 +355,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -413,6 +419,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";

@@ -1,0 +1,30 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "AI文字起こしを開始" : {
+
+    },
+    "AI文字起こし中..." : {
+
+    },
+    "Record New Memo" : {
+
+    },
+    "Start Recording" : {
+
+    },
+    "Stop Recording" : {
+
+    },
+    "Voice Memos" : {
+
+    },
+    "停止" : {
+
+    },
+    "再生" : {
+
+    }
+  },
+  "version" : "1.0"
+}

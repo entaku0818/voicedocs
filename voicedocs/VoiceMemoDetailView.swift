@@ -12,7 +12,7 @@ import AVFoundation
 
 struct VoiceMemoDetailView: View {
     var memo: VoiceMemo
-    @State private var transcription: String = "トランスクリプションを開始するには、以下のボタンを押してください。"
+    @State private var transcription: String = "AI文字起こしを開始するには、以下のボタンを押してください。"
     @State private var isTranscribing = false
     @State private var isPlaying = false
     @State private var player: AVPlayer?
@@ -33,7 +33,7 @@ struct VoiceMemoDetailView: View {
                         await transcribeAudio()
                     }
                 }) {
-                    Text(isTranscribing ? "トランスクリプション中..." : "トランスクリプションを開始")
+                    Text(isTranscribing ? "AI文字起こし中..." : "AI文字起こしを開始")
                         .padding()
                         .background(isTranscribing ? Color.gray : Color.blue)
                         .foregroundColor(.white)
@@ -72,17 +72,17 @@ struct VoiceMemoDetailView: View {
         let audioURL = documentsDirectory.appendingPathComponent(filePathComponent)
 
         isTranscribing = true
-        transcription = "トランスクリプションを取得中..."
+        transcription = "AI文字起こしを取得中..."
 
         do {
-            let whisper = try? await WhisperKit(model: "large-v3")
-            if let result = try await whisper?.transcribe(audioPath: audioURL.path, decodeOptions: DecodingOptions(language: "ja"))?.text {
+            let whisper = try await WhisperKit()
+            if let result = try await whisper.transcribe(audioPath: audioURL.path, decodeOptions: DecodingOptions(language: "ja"))?.text {
                 transcription = result
             } else {
-                transcription = "トランスクリプションを取得できませんでした。"
+                transcription = "AI文字起こしを取得できませんでした。"
             }
         } catch {
-            transcription = "トランスクリプション中にエラーが発生しました: \(error.localizedDescription)"
+            transcription = "AI文字起こし中にエラーが発生しました: \(error.localizedDescription)"
         }
 
         isTranscribing = false
