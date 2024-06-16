@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		617295192C1F3555002754EB /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 617295172C1F3555002754EB /* Localizable.strings */; };
+		617295192C1F3555002754EB /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 617295172C1F3555002754EB /* InfoPlist.strings */; };
 		617648442C0B57EE009A151D /* voicedocsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 617648432C0B57EE009A151D /* voicedocsApp.swift */; };
 		617648462C0B57EE009A151D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 617648452C0B57EE009A151D /* ContentView.swift */; };
 		617648482C0B57EF009A151D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 617648472C0B57EF009A151D /* Assets.xcassets */; };
@@ -45,8 +45,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		617295182C1F3555002754EB /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
-		6172951A2C1F355E002754EB /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
+		617295182C1F3555002754EB /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		6172951A2C1F355E002754EB /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		617648402C0B57EE009A151D /* voicedocs.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = voicedocs.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		617648432C0B57EE009A151D /* voicedocsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = voicedocsApp.swift; sourceTree = "<group>"; };
 		617648452C0B57EE009A151D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -98,7 +98,7 @@
 		617648372C0B57EE009A151D = {
 			isa = PBXGroup;
 			children = (
-				617295172C1F3555002754EB /* Localizable.strings */,
+				617295172C1F3555002754EB /* InfoPlist.strings */,
 				617F53A82C1DC05D008D5316 /* Localizable.xcstrings */,
 				617648422C0B57EE009A151D /* voicedocs */,
 				617648532C0B57EF009A151D /* voicedocsTests */,
@@ -283,7 +283,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6176484B2C0B57EF009A151D /* Preview Assets.xcassets in Resources */,
-				617295192C1F3555002754EB /* Localizable.strings in Resources */,
+				617295192C1F3555002754EB /* InfoPlist.strings in Resources */,
 				617648482C0B57EF009A151D /* Assets.xcassets in Resources */,
 				617F53A92C1DC05D008D5316 /* Localizable.xcstrings in Resources */,
 			);
@@ -355,13 +355,13 @@
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
-		617295172C1F3555002754EB /* Localizable.strings */ = {
+		617295172C1F3555002754EB /* InfoPlist.strings */ = {
 			isa = PBXVariantGroup;
 			children = (
 				617295182C1F3555002754EB /* en */,
 				6172951A2C1F355E002754EB /* ja */,
 			);
-			name = Localizable.strings;
+			name = InfoPlist.strings;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */
