@@ -2,6 +2,7 @@
   Localizable.strings
   voicedocs
 
-  Created by 遠藤拓弥 on 2024/06/15.
+  Created by 遠藤拓弥 on 2024/06/16.
   
 */
+CFBundleDisplayName = "シンプル文字起こし";
