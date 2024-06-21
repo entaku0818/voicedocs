@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6136883D2C23FC4A005E2A60 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 6136883C2C23FC4A005E2A60 /* FirebaseAnalytics */; };
+		613688452C23FDDA005E2A60 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 613688442C23FDDA005E2A60 /* GoogleService-Info.plist */; };
 		617295192C1F3555002754EB /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 617295172C1F3555002754EB /* InfoPlist.strings */; };
 		617648442C0B57EE009A151D /* voicedocsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 617648432C0B57EE009A151D /* voicedocsApp.swift */; };
 		617648462C0B57EE009A151D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 617648452C0B57EE009A151D /* ContentView.swift */; };
@@ -45,6 +47,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		613688442C23FDDA005E2A60 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		617295182C1F3555002754EB /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		6172951A2C1F355E002754EB /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		617648402C0B57EE009A151D /* voicedocs.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = voicedocs.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -75,6 +78,7 @@
 			files = (
 				6190047F2C158E170007A894 /* ComposableArchitecture in Frameworks */,
 				6190047C2C1586E60007A894 /* WhisperKit in Frameworks */,
+				6136883D2C23FC4A005E2A60 /* FirebaseAnalytics in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -120,6 +124,7 @@
 		617648422C0B57EE009A151D /* voicedocs */ = {
 			isa = PBXGroup;
 			children = (
+				613688442C23FDDA005E2A60 /* GoogleService-Info.plist */,
 				619004822C15972B0007A894 /* data */,
 				6176486D2C0B5939009A151D /* Info.plist */,
 				617648432C0B57EE009A151D /* voicedocsApp.swift */,
@@ -188,6 +193,7 @@
 			packageProductDependencies = (
 				6190047B2C1586E60007A894 /* WhisperKit */,
 				6190047E2C158E170007A894 /* ComposableArchitecture */,
+				6136883C2C23FC4A005E2A60 /* FirebaseAnalytics */,
 			);
 			productName = voicedocs;
 			productReference = 617648402C0B57EE009A151D /* voicedocs.app */;
@@ -265,6 +271,7 @@
 			packageReferences = (
 				6190047A2C1586E60007A894 /* XCRemoteSwiftPackageReference "whisperkit" */,
 				6190047D2C158E170007A894 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
+				6136883B2C23FC4A005E2A60 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			productRefGroup = 617648412C0B57EE009A151D /* Products */;
 			projectDirPath = "";
@@ -284,6 +291,7 @@
 			files = (
 				6176484B2C0B57EF009A151D /* Preview Assets.xcassets in Resources */,
 				617295192C1F3555002754EB /* InfoPlist.strings in Resources */,
+				613688452C23FDDA005E2A60 /* GoogleService-Info.plist in Resources */,
 				617648482C0B57EF009A151D /* Assets.xcassets in Resources */,
 				617F53A92C1DC05D008D5316 /* Localizable.xcstrings in Resources */,
 			);
@@ -508,7 +516,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -545,7 +553,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -680,6 +688,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		6136883B2C23FC4A005E2A60 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 10.28.0;
+			};
+		};
 		6190047A2C1586E60007A894 /* XCRemoteSwiftPackageReference "whisperkit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/argmaxinc/whisperkit";
@@ -699,6 +715,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		6136883C2C23FC4A005E2A60 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6136883B2C23FC4A005E2A60 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
 		6190047B2C1586E60007A894 /* WhisperKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 6190047A2C1586E60007A894 /* XCRemoteSwiftPackageReference "whisperkit" */;
