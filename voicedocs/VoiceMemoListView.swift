@@ -11,17 +11,19 @@ import SwiftUI
 struct VoiceMemoListView: View {
     private var voiceMemoController: VoiceMemoControllerProtocol
     @State private var voiceMemos: [VoiceMemo] = []
+    private let admobKey: String
 
-    init(voiceMemoController: VoiceMemoControllerProtocol) {
+    init(voiceMemoController: VoiceMemoControllerProtocol,admobKey:String) {
         self.voiceMemoController = voiceMemoController
         self._voiceMemos = State(initialValue: voiceMemoController.fetchVoiceMemos())
+        self.admobKey = admobKey
     }
 
     var body: some View {
         NavigationView {
             VStack {
                 List(voiceMemos, id: \.id) { memo in
-                    NavigationLink(destination: VoiceMemoDetailView(memo: memo)) {
+                    NavigationLink(destination: VoiceMemoDetailView(memo: memo, admobKey: admobKey)) {
                         VStack(alignment: .leading) {
                             Text(memo.title)
                                 .font(.headline)
@@ -49,5 +51,5 @@ struct VoiceMemoListView: View {
 
 
 #Preview {
-    VoiceMemoListView(voiceMemoController: FakeVoiceMemoController())
+    VoiceMemoListView(voiceMemoController: FakeVoiceMemoController(), admobKey: "")
 }

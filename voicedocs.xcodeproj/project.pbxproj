@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		615AADE12C53E75900346C98 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 615AADE02C53E75900346C98 /* FirebaseAnalytics */; };
 		615AADE52C53E89C00346C98 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 615AADE42C53E89C00346C98 /* GoogleService-Info.plist */; };
+		615AADE82C53F2AF00346C98 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 615AADE72C53F2AF00346C98 /* GoogleMobileAds */; };
 		617295192C1F3555002754EB /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 617295172C1F3555002754EB /* InfoPlist.strings */; };
 		617648442C0B57EE009A151D /* voicedocsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 617648432C0B57EE009A151D /* voicedocsApp.swift */; };
 		617648462C0B57EE009A151D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 617648452C0B57EE009A151D /* ContentView.swift */; };
@@ -27,6 +28,7 @@
 		6190048B2C159B860007A894 /* VoiceMemoListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6190048A2C159B860007A894 /* VoiceMemoListView.swift */; };
 		6190048D2C159D110007A894 /* FakeVoiceMemoController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6190048C2C159D110007A894 /* FakeVoiceMemoController.swift */; };
 		6190048F2C15A0050007A894 /* VoiceMemoDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6190048E2C15A0050007A894 /* VoiceMemoDetailView.swift */; };
+		619919A92C5407B200CC3E87 /* Prod.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 619919A82C5407B200CC3E87 /* Prod.xcconfig */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,6 +71,7 @@
 		6190048A2C159B860007A894 /* VoiceMemoListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemoListView.swift; sourceTree = "<group>"; };
 		6190048C2C159D110007A894 /* FakeVoiceMemoController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeVoiceMemoController.swift; sourceTree = "<group>"; };
 		6190048E2C15A0050007A894 /* VoiceMemoDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemoDetailView.swift; sourceTree = "<group>"; };
+		619919A82C5407B200CC3E87 /* Prod.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Prod.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -76,6 +79,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				615AADE82C53F2AF00346C98 /* GoogleMobileAds in Frameworks */,
 				6190047F2C158E170007A894 /* ComposableArchitecture in Frameworks */,
 				6190047C2C1586E60007A894 /* WhisperKit in Frameworks */,
 				615AADE12C53E75900346C98 /* FirebaseAnalytics in Frameworks */,
@@ -102,6 +106,7 @@
 		617648372C0B57EE009A151D = {
 			isa = PBXGroup;
 			children = (
+				619919A82C5407B200CC3E87 /* Prod.xcconfig */,
 				617295172C1F3555002754EB /* InfoPlist.strings */,
 				617F53A82C1DC05D008D5316 /* Localizable.xcstrings */,
 				617648422C0B57EE009A151D /* voicedocs */,
@@ -194,6 +199,7 @@
 				6190047B2C1586E60007A894 /* WhisperKit */,
 				6190047E2C158E170007A894 /* ComposableArchitecture */,
 				615AADE02C53E75900346C98 /* FirebaseAnalytics */,
+				615AADE72C53F2AF00346C98 /* GoogleMobileAds */,
 			);
 			productName = voicedocs;
 			productReference = 617648402C0B57EE009A151D /* voicedocs.app */;
@@ -272,6 +278,7 @@
 				6190047A2C1586E60007A894 /* XCRemoteSwiftPackageReference "whisperkit" */,
 				6190047D2C158E170007A894 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
 				615AADDF2C53E75900346C98 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				615AADE62C53F2AF00346C98 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 			);
 			productRefGroup = 617648412C0B57EE009A151D /* Products */;
 			projectDirPath = "";
@@ -290,6 +297,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6176484B2C0B57EF009A151D /* Preview Assets.xcassets in Resources */,
+				619919A92C5407B200CC3E87 /* Prod.xcconfig in Resources */,
 				617295192C1F3555002754EB /* InfoPlist.strings in Resources */,
 				615AADE52C53E89C00346C98 /* GoogleService-Info.plist in Resources */,
 				617648482C0B57EF009A151D /* Assets.xcassets in Resources */,
@@ -696,6 +704,14 @@
 				minimumVersion = 10.29.0;
 			};
 		};
+		615AADE62C53F2AF00346C98 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.7.0;
+			};
+		};
 		6190047A2C1586E60007A894 /* XCRemoteSwiftPackageReference "whisperkit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/argmaxinc/whisperkit";
@@ -719,6 +735,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 615AADDF2C53E75900346C98 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAnalytics;
+		};
+		615AADE72C53F2AF00346C98 /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 615AADE62C53F2AF00346C98 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
 		};
 		6190047B2C1586E60007A894 /* WhisperKit */ = {
 			isa = XCSwiftPackageProductDependency;
