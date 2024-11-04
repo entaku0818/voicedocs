@@ -24,6 +24,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     Analytics.setAnalyticsCollectionEnabled(true)
     Analytics.setUserID("debug_user")
     print("Firebase Analytics debug logging is enabled")
+      Analytics.logEvent(AnalyticsEventAppOpen, parameters: nil)
     #endif
 
     return true

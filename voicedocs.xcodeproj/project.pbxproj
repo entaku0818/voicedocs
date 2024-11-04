@@ -106,9 +106,6 @@
 		617648372C0B57EE009A151D = {
 			isa = PBXGroup;
 			children = (
-				619919A82C5407B200CC3E87 /* Prod.xcconfig */,
-				617295172C1F3555002754EB /* InfoPlist.strings */,
-				617F53A82C1DC05D008D5316 /* Localizable.xcstrings */,
 				617648422C0B57EE009A151D /* voicedocs */,
 				617648532C0B57EF009A151D /* voicedocsTests */,
 				6176485D2C0B57EF009A151D /* voicedocsUITests */,
@@ -129,6 +126,9 @@
 		617648422C0B57EE009A151D /* voicedocs */ = {
 			isa = PBXGroup;
 			children = (
+				619919A82C5407B200CC3E87 /* Prod.xcconfig */,
+				617295172C1F3555002754EB /* InfoPlist.strings */,
+				617F53A82C1DC05D008D5316 /* Localizable.xcstrings */,
 				615AADE42C53E89C00346C98 /* GoogleService-Info.plist */,
 				619004822C15972B0007A894 /* data */,
 				6176486D2C0B5939009A151D /* Info.plist */,
