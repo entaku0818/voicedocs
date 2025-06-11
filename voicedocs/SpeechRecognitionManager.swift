@@ -10,20 +10,22 @@ import Speech
 import AVFoundation
 import Combine
 
-
 class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "ja-JP"))
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
-    private var audioFile: AVAudioFile?
 
     @Published var transcribedText: String = ""
-    @Published var audioLevel: Float = 0.0 // 音の大きさを表すプロパティ
+    @Published var isRecognizing: Bool = false
 
-    private var audioFileURL: URL?
+    override init() {
+        super.init()
+        speechRecognizer?.delegate = self
+    }
 
-    func startRecording() async throws {
+    func startSpeechRecognition() async throws {
+        // 既存の認識タスクをキャンセル
         recognitionTask?.cancel()
         recognitionTask = nil
 
@@ -34,63 +36,70 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
         let inputNode = audioEngine.inputNode
 
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-        guard let recognitionRequest = recognitionRequest else { fatalError("Unable to create a SFSpeechAudioBufferRecognitionRequest object") }
+        guard let recognitionRequest = recognitionRequest else { 
+            throw NSError(domain: "SpeechRecognitionManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unable to create recognition request"])
+        }
         recognitionRequest.shouldReportPartialResults = true
 
         recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { result, error in
-            if let result = result {
-                self.transcribedText = result.bestTranscription.formattedString
-            }
+            DispatchQueue.main.async {
+                if let result = result {
+                    self.transcribedText = result.bestTranscription.formattedString
+                }
 
-            if error != nil || result?.isFinal == true {
-                self.audioEngine.stop()
-                inputNode.removeTap(onBus: 0)
-
-                self.recognitionRequest = nil
-                self.recognitionTask = nil
-
-                self.saveVoiceMemo()
+                if error != nil || result?.isFinal == true {
+                    self.stopSpeechRecognition()
+                }
             }
         }
 
         let recordingFormat = inputNode.outputFormat(forBus: 0)
-        let fileManager = FileManager.default
-        let documentsURL = try fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        let fileURL = documentsURL.appendingPathComponent(UUID().uuidString).appendingPathExtension("m4a")
-        audioFile = try AVAudioFile(forWriting: fileURL, settings: recordingFormat.settings)
-        self.audioFileURL = fileURL
-
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, when in
             self.recognitionRequest?.append(buffer)
-            try? self.audioFile?.write(from: buffer)
-
-            self.updateAudioLevel(buffer: buffer)
         }
 
         audioEngine.prepare()
         try audioEngine.start()
-    }
-
-    func stopRecording() {
-        audioEngine.stop()
-        recognitionRequest?.endAudio()
-    }
-
-    private func updateAudioLevel(buffer: AVAudioPCMBuffer) {
-        guard let channelData = buffer.floatChannelData else { return }
-        let channelDataValue = channelData.pointee
-        let channelDataValueArray = stride(from: 0,
-                                           to: Int(buffer.frameLength),
-                                           by: buffer.stride).map { channelDataValue[$0] }
-        let rms = sqrt(channelDataValueArray.map { $0 * $0 }.reduce(0, +) / Float(buffer.frameLength))
-        let avgPower = 20 * log10(rms)
+        
         DispatchQueue.main.async {
-            self.audioLevel = avgPower
+            self.isRecognizing = true
         }
     }
 
-    private func saveVoiceMemo() {
-        guard let audioFileURL = audioFileURL else { return }
-        VoiceMemoController.shared.saveVoiceMemo(title: "新規のノート", text: transcribedText, filePath: audioFileURL.path)
+    func stopSpeechRecognition() {
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        recognitionRequest?.endAudio()
+        recognitionRequest = nil
+        recognitionTask = nil
+        
+        DispatchQueue.main.async {
+            self.isRecognizing = false
+        }
+    }
+
+    // 音声ファイルからの認識（録音済みファイル用）
+    func recognizeAudioFile(url: URL) async throws -> String {
+        let recognitionRequest = SFSpeechURLRecognitionRequest(url: url)
+        recognitionRequest.shouldReportPartialResults = false
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { result, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                if let result = result, result.isFinal {
+                    continuation.resume(returning: result.bestTranscription.formattedString)
+                }
+            }
+        }
+    }
+
+    // MARK: - SFSpeechRecognizerDelegate
+    
+    func speechRecognizer(_ speechRecognizer: SFSpeechRecognizer, availabilityDidChange available: Bool) {
+        // 音声認識の可用性が変更された時の処理
     }
 }
