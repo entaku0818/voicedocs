@@ -9,7 +9,10 @@
       "Bash(grep:*)",
       "Bash(mv:*)",
       "Bash(rmdir:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(swift --version)",
+      "Bash(defaults write:*)"
     ],
     "deny": []
   }
