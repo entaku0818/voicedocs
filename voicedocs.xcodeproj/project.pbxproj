@@ -3,32 +3,17 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		615AADE12C53E75900346C98 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 615AADE02C53E75900346C98 /* FirebaseAnalytics */; };
-		615AADE52C53E89C00346C98 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 615AADE42C53E89C00346C98 /* GoogleService-Info.plist */; };
 		615AADE82C53F2AF00346C98 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 615AADE72C53F2AF00346C98 /* GoogleMobileAds */; };
-		617295192C1F3555002754EB /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 617295172C1F3555002754EB /* InfoPlist.strings */; };
-		617648442C0B57EE009A151D /* voicedocsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 617648432C0B57EE009A151D /* voicedocsApp.swift */; };
-		617648462C0B57EE009A151D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 617648452C0B57EE009A151D /* ContentView.swift */; };
-		617648482C0B57EF009A151D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 617648472C0B57EF009A151D /* Assets.xcassets */; };
-		6176484B2C0B57EF009A151D /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6176484A2C0B57EF009A151D /* Preview Assets.xcassets */; };
 		617648552C0B57EF009A151D /* voicedocsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 617648542C0B57EF009A151D /* voicedocsTests.swift */; };
 		6176485F2C0B57EF009A151D /* voicedocsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6176485E2C0B57EF009A151D /* voicedocsUITests.swift */; };
 		617648612C0B57EF009A151D /* voicedocsUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 617648602C0B57EF009A151D /* voicedocsUITestsLaunchTests.swift */; };
-		6176486F2C0B5969009A151D /* SpeechRecognitionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6176486E2C0B5969009A151D /* SpeechRecognitionManager.swift */; };
-		617F53A92C1DC05D008D5316 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 617F53A82C1DC05D008D5316 /* Localizable.xcstrings */; };
 		6190047C2C1586E60007A894 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6190047B2C1586E60007A894 /* WhisperKit */; };
 		6190047F2C158E170007A894 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 6190047E2C158E170007A894 /* ComposableArchitecture */; };
-		619004842C1597340007A894 /* VoiceMemoController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 619004832C1597340007A894 /* VoiceMemoController.swift */; };
-		619004872C1598B30007A894 /* VoiceMemoModel.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 619004852C1598B30007A894 /* VoiceMemoModel.xcdatamodeld */; };
-		619004892C1599F20007A894 /* VoiceMemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 619004882C1599F20007A894 /* VoiceMemo.swift */; };
-		6190048B2C159B860007A894 /* VoiceMemoListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6190048A2C159B860007A894 /* VoiceMemoListView.swift */; };
-		6190048D2C159D110007A894 /* FakeVoiceMemoController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6190048C2C159D110007A894 /* FakeVoiceMemoController.swift */; };
-		6190048F2C15A0050007A894 /* VoiceMemoDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6190048E2C15A0050007A894 /* VoiceMemoDetailView.swift */; };
-		619919A92C5407B200CC3E87 /* Prod.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 619919A82C5407B200CC3E87 /* Prod.xcconfig */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,30 +34,27 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		615AADE42C53E89C00346C98 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		617295182C1F3555002754EB /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		6172951A2C1F355E002754EB /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		617648402C0B57EE009A151D /* voicedocs.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = voicedocs.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		617648432C0B57EE009A151D /* voicedocsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = voicedocsApp.swift; sourceTree = "<group>"; };
-		617648452C0B57EE009A151D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		617648472C0B57EF009A151D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		6176484A2C0B57EF009A151D /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		617648502C0B57EF009A151D /* voicedocsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = voicedocsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		617648542C0B57EF009A151D /* voicedocsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = voicedocsTests.swift; sourceTree = "<group>"; };
 		6176485A2C0B57EF009A151D /* voicedocsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = voicedocsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6176485E2C0B57EF009A151D /* voicedocsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = voicedocsUITests.swift; sourceTree = "<group>"; };
 		617648602C0B57EF009A151D /* voicedocsUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = voicedocsUITestsLaunchTests.swift; sourceTree = "<group>"; };
-		6176486D2C0B5939009A151D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		6176486E2C0B5969009A151D /* SpeechRecognitionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognitionManager.swift; sourceTree = "<group>"; };
-		617F53A82C1DC05D008D5316 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
-		619004832C1597340007A894 /* VoiceMemoController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemoController.swift; sourceTree = "<group>"; };
-		619004862C1598B30007A894 /* Voicememo.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Voicememo.xcdatamodel; sourceTree = "<group>"; };
-		619004882C1599F20007A894 /* VoiceMemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemo.swift; sourceTree = "<group>"; };
-		6190048A2C159B860007A894 /* VoiceMemoListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemoListView.swift; sourceTree = "<group>"; };
-		6190048C2C159D110007A894 /* FakeVoiceMemoController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeVoiceMemoController.swift; sourceTree = "<group>"; };
-		6190048E2C15A0050007A894 /* VoiceMemoDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemoDetailView.swift; sourceTree = "<group>"; };
-		619919A82C5407B200CC3E87 /* Prod.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Prod.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		61A457B92DFDB6570060DD33 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 6176483F2C0B57EE009A151D /* voicedocs */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		61A457A62DFDB6570060DD33 /* voicedocs */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (61A457B92DFDB6570060DD33 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = voicedocs; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		6176483D2C0B57EE009A151D /* Frameworks */ = {
@@ -106,7 +88,7 @@
 		617648372C0B57EE009A151D = {
 			isa = PBXGroup;
 			children = (
-				617648422C0B57EE009A151D /* voicedocs */,
+				61A457A62DFDB6570060DD33 /* voicedocs */,
 				617648532C0B57EF009A151D /* voicedocsTests */,
 				6176485D2C0B57EF009A151D /* voicedocsUITests */,
 				617648412C0B57EE009A151D /* Products */,
@@ -121,34 +103,6 @@
 				6176485A2C0B57EF009A151D /* voicedocsUITests.xctest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		617648422C0B57EE009A151D /* voicedocs */ = {
-			isa = PBXGroup;
-			children = (
-				619919A82C5407B200CC3E87 /* Prod.xcconfig */,
-				617295172C1F3555002754EB /* InfoPlist.strings */,
-				617F53A82C1DC05D008D5316 /* Localizable.xcstrings */,
-				615AADE42C53E89C00346C98 /* GoogleService-Info.plist */,
-				619004822C15972B0007A894 /* data */,
-				6176486D2C0B5939009A151D /* Info.plist */,
-				617648432C0B57EE009A151D /* voicedocsApp.swift */,
-				617648452C0B57EE009A151D /* ContentView.swift */,
-				617648472C0B57EF009A151D /* Assets.xcassets */,
-				617648492C0B57EF009A151D /* Preview Content */,
-				6176486E2C0B5969009A151D /* SpeechRecognitionManager.swift */,
-				6190048A2C159B860007A894 /* VoiceMemoListView.swift */,
-				6190048E2C15A0050007A894 /* VoiceMemoDetailView.swift */,
-			);
-			path = voicedocs;
-			sourceTree = "<group>";
-		};
-		617648492C0B57EF009A151D /* Preview Content */ = {
-			isa = PBXGroup;
-			children = (
-				6176484A2C0B57EF009A151D /* Preview Assets.xcassets */,
-			);
-			path = "Preview Content";
 			sourceTree = "<group>";
 		};
 		617648532C0B57EF009A151D /* voicedocsTests */ = {
@@ -168,17 +122,6 @@
 			path = voicedocsUITests;
 			sourceTree = "<group>";
 		};
-		619004822C15972B0007A894 /* data */ = {
-			isa = PBXGroup;
-			children = (
-				619004832C1597340007A894 /* VoiceMemoController.swift */,
-				619004852C1598B30007A894 /* VoiceMemoModel.xcdatamodeld */,
-				619004882C1599F20007A894 /* VoiceMemo.swift */,
-				6190048C2C159D110007A894 /* FakeVoiceMemoController.swift */,
-			);
-			path = data;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -193,6 +136,9 @@
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				61A457A62DFDB6570060DD33 /* voicedocs */,
 			);
 			name = voicedocs;
 			packageProductDependencies = (
@@ -296,12 +242,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6176484B2C0B57EF009A151D /* Preview Assets.xcassets in Resources */,
-				619919A92C5407B200CC3E87 /* Prod.xcconfig in Resources */,
-				617295192C1F3555002754EB /* InfoPlist.strings in Resources */,
-				615AADE52C53E89C00346C98 /* GoogleService-Info.plist in Resources */,
-				617648482C0B57EF009A151D /* Assets.xcassets in Resources */,
-				617F53A92C1DC05D008D5316 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -326,15 +266,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				619004872C1598B30007A894 /* VoiceMemoModel.xcdatamodeld in Sources */,
-				619004842C1597340007A894 /* VoiceMemoController.swift in Sources */,
-				6190048B2C159B860007A894 /* VoiceMemoListView.swift in Sources */,
-				6190048F2C15A0050007A894 /* VoiceMemoDetailView.swift in Sources */,
-				619004892C1599F20007A894 /* VoiceMemo.swift in Sources */,
-				617648462C0B57EE009A151D /* ContentView.swift in Sources */,
-				6190048D2C159D110007A894 /* FakeVoiceMemoController.swift in Sources */,
-				6176486F2C0B5969009A151D /* SpeechRecognitionManager.swift in Sources */,
-				617648442C0B57EE009A151D /* voicedocsApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -369,18 +300,6 @@
 			targetProxy = 6176485B2C0B57EF009A151D /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
-
-/* Begin PBXVariantGroup section */
-		617295172C1F3555002754EB /* InfoPlist.strings */ = {
-			isa = PBXVariantGroup;
-			children = (
-				617295182C1F3555002754EB /* en */,
-				6172951A2C1F355E002754EB /* ja */,
-			);
-			name = InfoPlist.strings;
-			sourceTree = "<group>";
-		};
-/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		617648622C0B57EF009A151D /* Debug */ = {
@@ -583,7 +502,6 @@
 		617648682C0B57EF009A151D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -603,7 +521,6 @@
 		617648692C0B57EF009A151D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -623,7 +540,6 @@
 		6176486B2C0B57EF009A151D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4YZQY4C47E;
@@ -641,7 +557,6 @@
 		6176486C2C0B57EF009A151D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4YZQY4C47E;
@@ -754,19 +669,6 @@
 			productName = ComposableArchitecture;
 		};
 /* End XCSwiftPackageProductDependency section */
-
-/* Begin XCVersionGroup section */
-		619004852C1598B30007A894 /* VoiceMemoModel.xcdatamodeld */ = {
-			isa = XCVersionGroup;
-			children = (
-				619004862C1598B30007A894 /* Voicememo.xcdatamodel */,
-			);
-			currentVersion = 619004862C1598B30007A894 /* Voicememo.xcdatamodel */;
-			path = VoiceMemoModel.xcdatamodeld;
-			sourceTree = "<group>";
-			versionGroupType = wrapper.xcdatamodel;
-		};
-/* End XCVersionGroup section */
 	};
 	rootObject = 617648382C0B57EE009A151D /* Project object */;
 }

@@ -6,31 +6,78 @@
 //
 
 import XCTest
+import AVFoundation
 @testable import voicedocs
 
 final class voicedocsTests: XCTestCase {
+    var audioRecorder: AudioRecorder!
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+        audioRecorder = AudioRecorder()
     }
 
     override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
-
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
-    }
-
-    func testPerformanceExample() throws {
-        // This is an example of a performance test case.
-        self.measure {
-            // Put the code you want to measure the time of here.
+        if audioRecorder.isRecording {
+            audioRecorder.stopRecording()
         }
+        audioRecorder = nil
+    }
+
+    func testAudioRecorderInitialization() throws {
+        XCTAssertNotNil(audioRecorder)
+        XCTAssertFalse(audioRecorder.isRecording)
+        XCTAssertEqual(audioRecorder.recordingDuration, 0)
+        XCTAssertEqual(audioRecorder.audioLevel, 0.0)
+        XCTAssertEqual(audioRecorder.recordingQuality, .high)
+    }
+    
+    func testRecordingQualitySettings() throws {
+        let standardQuality = RecordingQuality.standard
+        let highQuality = RecordingQuality.high
+        
+        XCTAssertEqual(standardQuality.displayName, "標準品質")
+        XCTAssertEqual(highQuality.displayName, "高品質")
+        
+        let standardSettings = standardQuality.settings
+        let highSettings = highQuality.settings
+        
+        XCTAssertNotNil(standardSettings[AVSampleRateKey])
+        XCTAssertNotNil(highSettings[AVSampleRateKey])
+        
+        let standardSampleRate = standardSettings[AVSampleRateKey] as? Int
+        let highSampleRate = highSettings[AVSampleRateKey] as? Int
+        
+        XCTAssertEqual(standardSampleRate, 22050)
+        XCTAssertEqual(highSampleRate, 44100)
+    }
+    
+    func testRecordingQualityChange() throws {
+        XCTAssertEqual(audioRecorder.recordingQuality, .high)
+        
+        audioRecorder.setRecordingQuality(.standard)
+        XCTAssertEqual(audioRecorder.recordingQuality, .standard)
+        
+        audioRecorder.setRecordingQuality(.high)
+        XCTAssertEqual(audioRecorder.recordingQuality, .high)
+    }
+    
+    func testRecordingStateChanges() throws {
+        let expectation = XCTestExpectation(description: "Recording state should change")
+        
+        XCTAssertFalse(audioRecorder.isRecording)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 1.0)
+    }
+    
+    func testRecordingQualityAllCases() throws {
+        let allQualities = RecordingQuality.allCases
+        XCTAssertEqual(allQualities.count, 2)
+        XCTAssertTrue(allQualities.contains(.standard))
+        XCTAssertTrue(allQualities.contains(.high))
     }
 
 }

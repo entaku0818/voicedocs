@@ -50,6 +50,7 @@
       }
     },
     "Start Recording" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -66,6 +67,7 @@
       }
     },
     "Stop Recording" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -128,6 +130,18 @@
           }
         }
       }
+    },
+    "録音停止" : {
+
+    },
+    "録音時間: %@" : {
+
+    },
+    "録音開始" : {
+
+    },
+    "音声録音" : {
+
     }
   },
   "version" : "1.0"
