@@ -7,61 +7,195 @@ import GoogleMobileAds
 struct VoiceMemoDetailView: View {
     private let memo: VoiceMemo
     private let admobKey: String
+    private let onMemoUpdated: (() -> Void)?
 
+    @State private var editedTitle: String
+    @State private var editedText: String
     @State private var transcription: String = "AI文字起こしを開始するには、以下のボタンを押してください。"
     @State private var isTranscribing = false
     @State private var isPlaying = false
+    @State private var isEditing = false
+    @State private var showingShareSheet = false
+    @State private var showingSaveAlert = false
     @State private var player: AVPlayer?
     @State private var interstitial: GADInterstitialAd?
+    
+    private let voiceMemoController = VoiceMemoController.shared
 
-    init(memo: VoiceMemo, admobKey:String) {
+    init(memo: VoiceMemo, admobKey: String, onMemoUpdated: (() -> Void)? = nil) {
         self.memo = memo
         self.admobKey = admobKey
+        self.onMemoUpdated = onMemoUpdated
+        self._editedTitle = State(initialValue: memo.title)
+        self._editedText = State(initialValue: memo.text)
     }
 
     var body: some View {
-        VStack(alignment: .leading) {
-            Text(memo.text)
-
-            Text(transcription)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                // ファイル情報セクション
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("ファイル情報")
+                        .font(.headline)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("作成日時:")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(formatDate(memo.date))
+                        }
+                        
+                        if let duration = voiceMemoController.getAudioDuration(filePath: memo.filePath) {
+                            HStack {
+                                Text("録音時間:")
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text(formatDuration(duration))
+                            }
+                        }
+                        
+                        if let fileSize = voiceMemoController.getFileSize(filePath: memo.filePath) {
+                            HStack {
+                                Text("ファイルサイズ:")
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text(formatFileSize(fileSize))
+                            }
+                        }
+                    }
+                    .font(.caption)
+                }
                 .padding()
-                .background(Color.gray.opacity(0.2))
-                .cornerRadius(8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            HStack {
-                Button(action: {
-                    showInterstitialAd()
-                }) {
-                    Text(isTranscribing ? "AI文字起こし中..." : "AI文字起こしを開始")
-                        .padding()
-                        .background(isTranscribing ? Color.gray : Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+                
+                // タイトル編集セクション
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("タイトル")
+                        .font(.headline)
+                    
+                    if isEditing {
+                        TextField("タイトルを入力", text: $editedTitle)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    } else {
+                        Text(editedTitle)
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                    }
                 }
-                .disabled(isTranscribing)
-
-                Button(action: {
-                    togglePlayback()
-                }) {
-                    Text(isPlaying ? "停止" : "再生")
-                        .padding()
-                        .background(isPlaying ? Color.red : Color.green)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
+                
+                // テキスト編集セクション
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("メモ")
+                        .font(.headline)
+                    
+                    if isEditing {
+                        TextEditor(text: $editedText)
+                            .frame(minHeight: 100)
+                            .padding(8)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                    } else {
+                        Text(editedText.isEmpty ? "メモなし" : editedText)
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                            .foregroundColor(editedText.isEmpty ? .secondary : .primary)
+                    }
                 }
-
+                
+                // AI文字起こしセクション
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("AI文字起こし")
+                        .font(.headline)
+                    
+                    Text(transcription)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.body)
+                }
+                
+                // 操作ボタン
+                VStack(spacing: 12) {
+                    // 再生・文字起こしボタン
+                    HStack(spacing: 12) {
+                        Button(action: togglePlayback) {
+                            HStack {
+                                Image(systemName: isPlaying ? "stop.fill" : "play.fill")
+                                Text(isPlaying ? "停止" : "再生")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(isPlaying ? Color.red : Color.green)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+                        
+                        Button(action: showInterstitialAd) {
+                            HStack {
+                                Image(systemName: "text.bubble")
+                                Text(isTranscribing ? "変換中..." : "文字起こし")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(isTranscribing ? Color.gray : Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+                        .disabled(isTranscribing)
+                    }
+                    
+                    // 編集・共有ボタン
+                    HStack(spacing: 12) {
+                        Button(action: toggleEditing) {
+                            HStack {
+                                Image(systemName: isEditing ? "checkmark" : "pencil")
+                                Text(isEditing ? "保存" : "編集")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(isEditing ? Color.orange : Color.purple)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+                        
+                        Button(action: { showingShareSheet = true }) {
+                            HStack {
+                                Image(systemName: "square.and.arrow.up")
+                                Text("共有")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.cyan)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+                    }
+                }
             }
-
-            Spacer()
+            .padding()
         }
-        .navigationTitle(memo.title)
-        .padding(.horizontal, 20)
+        .navigationTitle(editedTitle)
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             loadInterstitialAd()
         }
         .onDisappear {
             stopPlayback()
+        }
+        .sheet(isPresented: $showingShareSheet) {
+            ShareSheet(items: createShareItems())
+        }
+        .alert("保存完了", isPresented: $showingSaveAlert) {
+            Button("OK") { }
+        } message: {
+            Text("メモが更新されました。")
         }
     }
 
@@ -153,6 +287,89 @@ struct VoiceMemoDetailView: View {
     private func stopPlayback() {
         player?.pause()
         isPlaying = false
+    }
+    
+    private func toggleEditing() {
+        if isEditing {
+            // 保存処理
+            let success = voiceMemoController.updateVoiceMemo(
+                id: memo.id,
+                title: editedTitle.isEmpty ? "無題" : editedTitle,
+                text: editedText
+            )
+            
+            if success {
+                showingSaveAlert = true
+                onMemoUpdated?()
+            }
+        }
+        isEditing.toggle()
+    }
+    
+    private func createShareItems() -> [Any] {
+        var items: [Any] = []
+        
+        // テキスト内容
+        let textContent = """
+        タイトル: \(editedTitle)
+        作成日時: \(formatDate(memo.date))
+        
+        メモ:
+        \(editedText)
+        
+        文字起こし結果:
+        \(transcription)
+        """
+        items.append(textContent)
+        
+        // 音声ファイル
+        if !memo.filePath.isEmpty {
+            let fileURL = URL(fileURLWithPath: memo.filePath)
+            if FileManager.default.fileExists(atPath: memo.filePath) {
+                items.append(fileURL)
+            }
+        }
+        
+        return items
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        formatter.locale = Locale(identifier: "ja_JP")
+        return formatter.string(from: date)
+    }
+    
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = Int(duration) / 60 % 60
+        let seconds = Int(duration) % 60
+        
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%d:%02d", minutes, seconds)
+        }
+    }
+    
+    private func formatFileSize(_ size: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: size)
+    }
+}
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {
+        // 更新処理は不要
     }
 }
 
