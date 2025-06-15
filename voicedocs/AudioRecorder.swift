@@ -43,6 +43,11 @@ enum RecordingQuality: CaseIterable {
     }
 }
 
+enum RecordingMode {
+    case newRecording
+    case additionalRecording(memoId: UUID)
+}
+
 class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     private var audioRecorder: AVAudioRecorder?
     private var recordingSession: AVAudioSession!
@@ -50,6 +55,9 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     private var recordingTimer: Timer?
     private var startTime: Date?
     private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+    private var recordingMode: RecordingMode = .newRecording
+    private var segmentIndex: Int = 0
+    private let voiceMemoController = VoiceMemoController.shared
     
     @Published var isRecording: Bool = false
     @Published var recordingDuration: TimeInterval = 0
@@ -131,6 +139,25 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
         }
     }
     
+    func startAdditionalRecording(for memoId: UUID) {
+        guard !isRecording else { return }
+        
+        recordingMode = .additionalRecording(memoId: memoId)
+        let segments = voiceMemoController.getSegmentsForMemo(memoId: memoId)
+        segmentIndex = segments.count
+        
+        requestPermissions { [weak self] granted in
+            guard granted else {
+                print("Recording permission not granted")
+                return
+            }
+            
+            DispatchQueue.main.async {
+                self?.performStartRecording()
+            }
+        }
+    }
+    
     private func requestPermissions(completion: @escaping (Bool) -> Void) {
         AVAudioSession.sharedInstance().requestRecordPermission { granted in
             completion(granted)
@@ -139,7 +166,15 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     
     private func performStartRecording() {
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let audioFilename = documentsPath.appendingPathComponent("\(UUID().uuidString).m4a")
+        
+        let audioFilename: URL
+        switch recordingMode {
+        case .newRecording:
+            audioFilename = documentsPath.appendingPathComponent("\(UUID().uuidString).m4a")
+        case .additionalRecording(let memoId):
+            let segmentPath = voiceMemoController.generateSegmentFilePath(memoId: memoId, segmentIndex: segmentIndex)
+            audioFilename = URL(fileURLWithPath: segmentPath)
+        }
         
         let settings = recordingQuality.settings
         
@@ -212,12 +247,32 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     }
     
     private func saveRecording(url: URL, duration: TimeInterval) {
-        // VoiceMemoControllerを使用してCore Dataに保存
-        VoiceMemoController.shared.saveVoiceMemo(
-            title: "録音 \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))",
-            text: "", // 音声認識結果は別途設定
-            filePath: url.path
-        )
+        switch recordingMode {
+        case .newRecording:
+            // 新しいメモとして保存
+            voiceMemoController.saveVoiceMemo(
+                title: "録音 \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))",
+                text: "", // 音声認識結果は別途設定
+                filePath: url.path
+            )
+            
+        case .additionalRecording(let memoId):
+            // セグメントとして追加
+            let segment = AudioSegment(
+                filePath: url.path,
+                startTime: 0, // ここでは仮の値、実際は別途計算
+                duration: duration
+            )
+            
+            let success = voiceMemoController.addSegmentToMemo(memoId: memoId, segment: segment)
+            if !success {
+                print("Failed to add segment to memo")
+            }
+        }
+        
+        // モードをリセット
+        recordingMode = .newRecording
+        segmentIndex = 0
     }
     
     func setRecordingQuality(_ quality: RecordingQuality) {
@@ -230,6 +285,19 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     
     func getRemainingBackgroundTime() -> TimeInterval {
         return UIApplication.shared.backgroundTimeRemaining
+    }
+    
+    // 追加録音モードかどうかを確認
+    func isAdditionalRecordingMode() -> Bool {
+        if case .additionalRecording = recordingMode {
+            return true
+        }
+        return false
+    }
+    
+    // 現在の録音モードを取得
+    func getCurrentRecordingMode() -> RecordingMode {
+        return recordingMode
     }
     
     // MARK: - AVAudioRecorderDelegate

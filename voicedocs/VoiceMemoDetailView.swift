@@ -17,8 +17,10 @@ struct VoiceMemoDetailView: View {
     @State private var isEditing = false
     @State private var showingShareSheet = false
     @State private var showingSaveAlert = false
+    @State private var currentMemo: VoiceMemo
     @State private var player: AVPlayer?
     @State private var interstitial: GADInterstitialAd?
+    @StateObject private var additionalRecorder = AudioRecorder()
     
     private let voiceMemoController = VoiceMemoController.shared
 
@@ -28,6 +30,7 @@ struct VoiceMemoDetailView: View {
         self.onMemoUpdated = onMemoUpdated
         self._editedTitle = State(initialValue: memo.title)
         self._editedText = State(initialValue: memo.text)
+        self._currentMemo = State(initialValue: memo)
     }
 
     var body: some View {
@@ -51,7 +54,7 @@ struct VoiceMemoDetailView: View {
                                 Text("録音時間:")
                                     .foregroundColor(.secondary)
                                 Spacer()
-                                Text(formatDuration(duration))
+                                Text(formatDuration(duration + currentMemo.totalDuration))
                             }
                         }
                         
@@ -108,6 +111,37 @@ struct VoiceMemoDetailView: View {
                     }
                 }
                 
+                // 追加録音セグメント表示
+                if !currentMemo.segments.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("追加録音セグメント")
+                            .font(.headline)
+                        
+                        ForEach(currentMemo.segments.indices, id: \.self) { index in
+                            let segment = currentMemo.segments[index]
+                            HStack {
+                                Text("セグメント \(index + 1)")
+                                Spacer()
+                                Text(formatDuration(segment.duration))
+                                    .foregroundColor(.secondary)
+                                
+                                Button("削除") {
+                                    removeSegment(segment)
+                                }
+                                .font(.caption)
+                                .foregroundColor(.red)
+                            }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                        }
+                        
+                        Text("合計時間: \(formatDuration(currentMemo.totalDuration))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
                 // AI文字起こしセクション
                 VStack(alignment: .leading, spacing: 8) {
                     Text("AI文字起こし")
@@ -151,6 +185,57 @@ struct VoiceMemoDetailView: View {
                         .disabled(isTranscribing)
                     }
                     
+                    // 追加録音ボタン
+                    Button(action: toggleAdditionalRecording) {
+                        HStack {
+                            Image(systemName: additionalRecorder.isRecording ? "stop.circle.fill" : "mic.badge.plus")
+                            Text(additionalRecorder.isRecording ? "追加録音停止" : "録音を追加")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(additionalRecorder.isRecording ? Color.red : Color.indigo)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                        .scaleEffect(additionalRecorder.isRecording ? 1.05 : 1.0)
+                        .animation(.easeInOut(duration: 0.1), value: additionalRecorder.isRecording)
+                    }
+                    
+                    // 追加録音中のUI
+                    if additionalRecorder.isRecording {
+                        VStack(spacing: 8) {
+                            Text("追加録音中...")
+                                .font(.headline)
+                                .foregroundColor(.red)
+                            
+                            Text("録音時間: \(formatTime(additionalRecorder.recordingDuration))")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            
+                            // 音声レベル表示
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("音声レベル")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                GeometryReader { geometry in
+                                    ZStack(alignment: .leading) {
+                                        Rectangle()
+                                            .foregroundColor(.gray)
+                                            .opacity(0.3)
+                                        Rectangle()
+                                            .foregroundColor(additionalRecorder.audioLevel > 0.8 ? .red : additionalRecorder.audioLevel > 0.5 ? .orange : .green)
+                                            .frame(width: CGFloat(additionalRecorder.audioLevel) * geometry.size.width)
+                                            .animation(.easeInOut(duration: 0.1), value: additionalRecorder.audioLevel)
+                                    }
+                                    .cornerRadius(10)
+                                }
+                                .frame(height: 20)
+                            }
+                        }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                    }
+                    
                     // 編集・共有ボタン
                     HStack(spacing: 12) {
                         Button(action: toggleEditing) {
@@ -164,6 +249,7 @@ struct VoiceMemoDetailView: View {
                             .foregroundColor(.white)
                             .cornerRadius(12)
                         }
+                        .disabled(additionalRecorder.isRecording)
                         
                         Button(action: { showingShareSheet = true }) {
                             HStack {
@@ -176,6 +262,7 @@ struct VoiceMemoDetailView: View {
                             .foregroundColor(.white)
                             .cornerRadius(12)
                         }
+                        .disabled(additionalRecorder.isRecording)
                     }
                 }
             }
@@ -185,9 +272,13 @@ struct VoiceMemoDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             loadInterstitialAd()
+            refreshMemo()
         }
         .onDisappear {
             stopPlayback()
+            if additionalRecorder.isRecording {
+                additionalRecorder.stopRecording()
+            }
         }
         .sheet(isPresented: $showingShareSheet) {
             ShareSheet(items: createShareItems())
@@ -358,6 +449,52 @@ struct VoiceMemoDetailView: View {
         formatter.allowedUnits = [.useKB, .useMB]
         formatter.countStyle = .file
         return formatter.string(fromByteCount: size)
+    }
+    
+    private func toggleAdditionalRecording() {
+        if additionalRecorder.isRecording {
+            additionalRecorder.stopRecording()
+            // 録音完了後にメモ情報を更新
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                refreshMemo()
+                onMemoUpdated?()
+            }
+        } else {
+            additionalRecorder.startAdditionalRecording(for: memo.id)
+        }
+    }
+    
+    private func refreshMemo() {
+        let memos = voiceMemoController.fetchVoiceMemos()
+        if let updatedMemo = memos.first(where: { $0.id == memo.id }) {
+            currentMemo = updatedMemo
+        }
+    }
+    
+    private func removeSegment(_ segment: AudioSegment) {
+        let success = voiceMemoController.removeSegmentFromMemo(
+            memoId: memo.id,
+            segmentId: segment.id
+        )
+        
+        if success {
+            // セグメントファイルを削除
+            _ = voiceMemoController.deleteAudioFile(filePath: segment.filePath)
+            refreshMemo()
+            onMemoUpdated?()
+        }
+    }
+    
+    private func formatTime(_ timeInterval: TimeInterval) -> String {
+        let hours = Int(timeInterval) / 3600
+        let minutes = Int(timeInterval) / 60 % 60
+        let seconds = Int(timeInterval) % 60
+        
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%02d:%02d", minutes, seconds)
+        }
     }
 }
 

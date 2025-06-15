@@ -13,6 +13,12 @@ protocol VoiceMemoControllerProtocol {
     func getFileSize(filePath: String) -> Int64?
     func getAudioDuration(filePath: String) -> TimeInterval?
     func deleteAudioFile(filePath: String) -> Bool
+    
+    // セグメント関連機能
+    func addSegmentToMemo(memoId: UUID, segment: AudioSegment) -> Bool
+    func removeSegmentFromMemo(memoId: UUID, segmentId: UUID) -> Bool
+    func getSegmentsForMemo(memoId: UUID) -> [AudioSegment]
+    func generateSegmentFilePath(memoId: UUID, segmentIndex: Int) -> String
 }
 
 struct VoiceMemoController:VoiceMemoControllerProtocol {
@@ -69,13 +75,25 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
         do {
             let voiceMemos = try context.fetch(fetchRequest)
             return voiceMemos.map { memo in
-                VoiceMemo(
+                var voiceMemo = VoiceMemo(
                     id: memo.id ?? UUID(),
                     title: memo.title ?? "",
                     text: memo.text ?? "",
                     date: memo.createdAt ?? Date(),
                     filePath: memo.voiceFilePath ?? ""
                 )
+                
+                // セグメント情報を復元
+                if let segmentsData = memo.value(forKey: "segments") as? Data {
+                    do {
+                        let segments = try JSONDecoder().decode([AudioSegment].self, from: segmentsData)
+                        voiceMemo.segments = segments
+                    } catch {
+                        print("Failed to decode segments: \(error)")
+                    }
+                }
+                
+                return voiceMemo
             }
         } catch {
             print("Failed to fetch voice memos: \(error)")
@@ -180,5 +198,105 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             print("Failed to delete audio file: \(error)")
             return false
         }
+    }
+    
+    // MARK: - セグメント管理機能
+    
+    // メモにセグメントを追加
+    func addSegmentToMemo(memoId: UUID, segment: AudioSegment) -> Bool {
+        let context = container.viewContext
+        let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", memoId as CVarArg)
+        
+        do {
+            let voiceMemos = try context.fetch(fetchRequest)
+            guard let voiceMemo = voiceMemos.first else {
+                print("Voice memo not found for adding segment")
+                return false
+            }
+            
+            // 既存のセグメントを取得
+            var segments: [AudioSegment] = []
+            if let segmentsData = voiceMemo.value(forKey: "segments") as? Data {
+                segments = (try? JSONDecoder().decode([AudioSegment].self, from: segmentsData)) ?? []
+            }
+            
+            // 新しいセグメントを追加
+            segments.append(segment)
+            
+            // セグメントをJSONエンコードして保存
+            let segmentsData = try JSONEncoder().encode(segments)
+            voiceMemo.setValue(segmentsData, forKey: "segments")
+            
+            try context.save()
+            return true
+        } catch {
+            print("Failed to add segment: \(error)")
+            return false
+        }
+    }
+    
+    // メモからセグメントを削除
+    func removeSegmentFromMemo(memoId: UUID, segmentId: UUID) -> Bool {
+        let context = container.viewContext
+        let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", memoId as CVarArg)
+        
+        do {
+            let voiceMemos = try context.fetch(fetchRequest)
+            guard let voiceMemo = voiceMemos.first else {
+                print("Voice memo not found for removing segment")
+                return false
+            }
+            
+            // 既存のセグメントを取得
+            var segments: [AudioSegment] = []
+            if let segmentsData = voiceMemo.value(forKey: "segments") as? Data {
+                segments = (try? JSONDecoder().decode([AudioSegment].self, from: segmentsData)) ?? []
+            }
+            
+            // 指定されたセグメントを削除
+            segments.removeAll { $0.id == segmentId }
+            
+            // セグメントをJSONエンコードして保存
+            let segmentsData = try JSONEncoder().encode(segments)
+            voiceMemo.setValue(segmentsData, forKey: "segments")
+            
+            try context.save()
+            return true
+        } catch {
+            print("Failed to remove segment: \(error)")
+            return false
+        }
+    }
+    
+    // メモのセグメント一覧を取得
+    func getSegmentsForMemo(memoId: UUID) -> [AudioSegment] {
+        let context = container.viewContext
+        let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", memoId as CVarArg)
+        
+        do {
+            let voiceMemos = try context.fetch(fetchRequest)
+            guard let voiceMemo = voiceMemos.first else {
+                return []
+            }
+            
+            if let segmentsData = voiceMemo.value(forKey: "segments") as? Data {
+                return (try? JSONDecoder().decode([AudioSegment].self, from: segmentsData)) ?? []
+            }
+            
+            return []
+        } catch {
+            print("Failed to get segments: \(error)")
+            return []
+        }
+    }
+    
+    // セグメントファイルパスを生成
+    func generateSegmentFilePath(memoId: UUID, segmentIndex: Int) -> String {
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let segmentFileName = "\(memoId.uuidString)_segment\(segmentIndex).m4a"
+        return documentsPath.appendingPathComponent(segmentFileName).path
     }
 }

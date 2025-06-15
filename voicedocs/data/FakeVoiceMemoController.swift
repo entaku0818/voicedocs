@@ -62,4 +62,33 @@ class FakeVoiceMemoController: VoiceMemoControllerProtocol {
         // フェイクなので常にtrueを返す
         return true
     }
+    
+    // MARK: - セグメント管理機能
+    
+    func addSegmentToMemo(memoId: UUID, segment: AudioSegment) -> Bool {
+        if let index = voiceMemos.firstIndex(where: { $0.id == memoId }) {
+            voiceMemos[index].segments.append(segment)
+            return true
+        }
+        return false
+    }
+    
+    func removeSegmentFromMemo(memoId: UUID, segmentId: UUID) -> Bool {
+        if let memoIndex = voiceMemos.firstIndex(where: { $0.id == memoId }) {
+            voiceMemos[memoIndex].segments.removeAll { $0.id == segmentId }
+            return true
+        }
+        return false
+    }
+    
+    func getSegmentsForMemo(memoId: UUID) -> [AudioSegment] {
+        if let memo = voiceMemos.first(where: { $0.id == memoId }) {
+            return memo.segments
+        }
+        return []
+    }
+    
+    func generateSegmentFilePath(memoId: UUID, segmentIndex: Int) -> String {
+        return "/fake/path/\(memoId.uuidString)_segment\(segmentIndex).m4a"
+    }
 }
