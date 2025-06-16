@@ -19,6 +19,12 @@ protocol VoiceMemoControllerProtocol {
     func removeSegmentFromMemo(memoId: UUID, segmentId: UUID) -> Bool
     func getSegmentsForMemo(memoId: UUID) -> [AudioSegment]
     func generateSegmentFilePath(memoId: UUID, segmentIndex: Int) -> String
+    
+    // 文字起こし関連機能
+    func updateTranscriptionStatus(memoId: UUID, status: TranscriptionStatus) -> Bool
+    func updateTranscriptionResult(memoId: UUID, text: String, quality: Float) -> Bool
+    func updateTranscriptionError(memoId: UUID, error: String) -> Bool
+    func getTranscriptionStatus(memoId: UUID) -> TranscriptionStatus?
 }
 
 struct VoiceMemoController:VoiceMemoControllerProtocol {
@@ -83,8 +89,16 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                     filePath: memo.voiceFilePath ?? ""
                 )
                 
+                // 文字起こし関連情報を復元
+                if let statusString = memo.transcriptionStatus {
+                    voiceMemo.transcriptionStatus = TranscriptionStatus(rawValue: statusString) ?? .none
+                }
+                voiceMemo.transcriptionQuality = memo.transcriptionQuality
+                voiceMemo.transcribedAt = memo.transcribedAt
+                voiceMemo.transcriptionError = memo.transcriptionError
+                
                 // セグメント情報を復元
-                if let segmentsData = memo.value(forKey: "segments") as? Data {
+                if let segmentsData = memo.segments {
                     do {
                         let segments = try JSONDecoder().decode([AudioSegment].self, from: segmentsData)
                         voiceMemo.segments = segments
@@ -298,5 +312,112 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let segmentFileName = "\(memoId.uuidString)_segment\(segmentIndex).m4a"
         return documentsPath.appendingPathComponent(segmentFileName).path
+    }
+    
+    // MARK: - 文字起こし関連機能
+    
+    // 文字起こし状態を更新
+    func updateTranscriptionStatus(memoId: UUID, status: TranscriptionStatus) -> Bool {
+        let context = container.viewContext
+        let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", memoId as CVarArg)
+        
+        do {
+            let voiceMemos = try context.fetch(fetchRequest)
+            guard let voiceMemo = voiceMemos.first else {
+                print("Voice memo not found for transcription status update")
+                return false
+            }
+            
+            voiceMemo.transcriptionStatus = status.rawValue
+            
+            // 完了または失敗時にタイムスタンプを記録
+            if status == .completed || status == .failed {
+                voiceMemo.transcribedAt = Date()
+            }
+            
+            // 進行中にセットする場合はエラーをクリア
+            if status == .inProgress {
+                voiceMemo.transcriptionError = nil
+            }
+            
+            try context.save()
+            return true
+        } catch {
+            print("Failed to update transcription status: \(error)")
+            return false
+        }
+    }
+    
+    // 文字起こし結果を更新
+    func updateTranscriptionResult(memoId: UUID, text: String, quality: Float) -> Bool {
+        let context = container.viewContext
+        let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", memoId as CVarArg)
+        
+        do {
+            let voiceMemos = try context.fetch(fetchRequest)
+            guard let voiceMemo = voiceMemos.first else {
+                print("Voice memo not found for transcription result update")
+                return false
+            }
+            
+            voiceMemo.text = text
+            voiceMemo.transcriptionQuality = quality
+            voiceMemo.transcriptionStatus = TranscriptionStatus.completed.rawValue
+            voiceMemo.transcribedAt = Date()
+            voiceMemo.transcriptionError = nil
+            
+            try context.save()
+            return true
+        } catch {
+            print("Failed to update transcription result: \(error)")
+            return false
+        }
+    }
+    
+    // 文字起こしエラーを更新
+    func updateTranscriptionError(memoId: UUID, error: String) -> Bool {
+        let context = container.viewContext
+        let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", memoId as CVarArg)
+        
+        do {
+            let voiceMemos = try context.fetch(fetchRequest)
+            guard let voiceMemo = voiceMemos.first else {
+                print("Voice memo not found for transcription error update")
+                return false
+            }
+            
+            voiceMemo.transcriptionError = error
+            voiceMemo.transcriptionStatus = TranscriptionStatus.failed.rawValue
+            voiceMemo.transcribedAt = Date()
+            
+            try context.save()
+            return true
+        } catch {
+            print("Failed to update transcription error: \(error)")
+            return false
+        }
+    }
+    
+    // 文字起こし状態を取得
+    func getTranscriptionStatus(memoId: UUID) -> TranscriptionStatus? {
+        let context = container.viewContext
+        let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", memoId as CVarArg)
+        
+        do {
+            let voiceMemos = try context.fetch(fetchRequest)
+            guard let voiceMemo = voiceMemos.first,
+                  let statusString = voiceMemo.transcriptionStatus else {
+                return .none
+            }
+            
+            return TranscriptionStatus(rawValue: statusString) ?? .none
+        } catch {
+            print("Failed to get transcription status: \(error)")
+            return .none
+        }
     }
 }

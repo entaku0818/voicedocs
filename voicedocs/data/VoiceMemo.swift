@@ -15,6 +15,12 @@ struct VoiceMemo {
     var filePath: String
     var segments: [AudioSegment] = []
     
+    // 文字起こし関連プロパティ
+    var transcriptionStatus: TranscriptionStatus = .none
+    var transcriptionQuality: Float = 0.0
+    var transcribedAt: Date?
+    var transcriptionError: String?
+    
     // 全体の録音時間（メイン + セグメント）
     var totalDuration: TimeInterval {
         return segments.reduce(0) { $0 + $1.duration }
@@ -33,5 +39,23 @@ struct VoiceMemo {
             return 0 // 最初のセグメント
         }
         return lastSegment.endTime
+    }
+    
+    // 文字起こし状態の確認
+    var isTranscriptionInProgress: Bool {
+        return transcriptionStatus.isInProgress
+    }
+    
+    var isTranscriptionCompleted: Bool {
+        return transcriptionStatus.isCompleted
+    }
+    
+    var hasTranscriptionFailed: Bool {
+        return transcriptionStatus.hasFailed
+    }
+    
+    // 文字起こし品質のパーセンテージ表示
+    var transcriptionQualityPercentage: Int {
+        return Int(transcriptionQuality * 100)
     }
 }

@@ -11,13 +11,28 @@ class FakeVoiceMemoController: VoiceMemoControllerProtocol {
 
     init() {
         // 適当なデータを追加
-        voiceMemos.append(VoiceMemo(id: UUID(), title: "Memo 1", text: "This is the first memo.", date: Date(), filePath: "/path/to/file1"))
-        voiceMemos.append(VoiceMemo(id: UUID(), title: "Memo 2", text: "This is the second memo.", date: Date().addingTimeInterval(-86400), filePath: "/path/to/file2"))
-        voiceMemos.append(VoiceMemo(id: UUID(), title: "Memo 3", text: "This is the third memo.", date: Date().addingTimeInterval(-172800), filePath: "/path/to/file3"))
+        var memo1 = VoiceMemo(id: UUID(), title: "Memo 1", text: "This is the first memo.", date: Date(), filePath: "/path/to/file1")
+        memo1.transcriptionStatus = .completed
+        memo1.transcriptionQuality = 0.85
+        memo1.transcribedAt = Date().addingTimeInterval(-100)
+        voiceMemos.append(memo1)
+        
+        var memo2 = VoiceMemo(id: UUID(), title: "Memo 2", text: "This is the second memo.", date: Date().addingTimeInterval(-86400), filePath: "/path/to/file2")
+        memo2.transcriptionStatus = .completed
+        memo2.transcriptionQuality = 0.92
+        memo2.transcribedAt = Date().addingTimeInterval(-86300)
+        voiceMemos.append(memo2)
+        
+        var memo3 = VoiceMemo(id: UUID(), title: "Memo 3", text: "This is the third memo.", date: Date().addingTimeInterval(-172800), filePath: "/path/to/file3")
+        memo3.transcriptionStatus = .none
+        voiceMemos.append(memo3)
     }
 
     func saveVoiceMemo(title: String, text: String, filePath: String?) {
-        let newMemo = VoiceMemo(id: UUID(), title: title, text: text, date: Date(), filePath: filePath ?? "")
+        var newMemo = VoiceMemo(id: UUID(), title: title, text: text, date: Date(), filePath: filePath ?? "")
+        newMemo.transcriptionStatus = text.isEmpty ? .none : .completed
+        newMemo.transcriptionQuality = text.isEmpty ? 0.0 : 0.8
+        newMemo.transcribedAt = text.isEmpty ? nil : Date()
         voiceMemos.append(newMemo)
     }
 
@@ -90,5 +105,50 @@ class FakeVoiceMemoController: VoiceMemoControllerProtocol {
     
     func generateSegmentFilePath(memoId: UUID, segmentIndex: Int) -> String {
         return "/fake/path/\(memoId.uuidString)_segment\(segmentIndex).m4a"
+    }
+    
+    // MARK: - 文字起こし関連機能
+    
+    func updateTranscriptionStatus(memoId: UUID, status: TranscriptionStatus) -> Bool {
+        if let index = voiceMemos.firstIndex(where: { $0.id == memoId }) {
+            voiceMemos[index].transcriptionStatus = status
+            if status == .completed || status == .failed {
+                voiceMemos[index].transcribedAt = Date()
+            }
+            if status == .inProgress {
+                voiceMemos[index].transcriptionError = nil
+            }
+            return true
+        }
+        return false
+    }
+    
+    func updateTranscriptionResult(memoId: UUID, text: String, quality: Float) -> Bool {
+        if let index = voiceMemos.firstIndex(where: { $0.id == memoId }) {
+            voiceMemos[index].text = text
+            voiceMemos[index].transcriptionQuality = quality
+            voiceMemos[index].transcriptionStatus = .completed
+            voiceMemos[index].transcribedAt = Date()
+            voiceMemos[index].transcriptionError = nil
+            return true
+        }
+        return false
+    }
+    
+    func updateTranscriptionError(memoId: UUID, error: String) -> Bool {
+        if let index = voiceMemos.firstIndex(where: { $0.id == memoId }) {
+            voiceMemos[index].transcriptionError = error
+            voiceMemos[index].transcriptionStatus = .failed
+            voiceMemos[index].transcribedAt = Date()
+            return true
+        }
+        return false
+    }
+    
+    func getTranscriptionStatus(memoId: UUID) -> TranscriptionStatus? {
+        if let memo = voiceMemos.first(where: { $0.id == memoId }) {
+            return memo.transcriptionStatus
+        }
+        return .none
     }
 }

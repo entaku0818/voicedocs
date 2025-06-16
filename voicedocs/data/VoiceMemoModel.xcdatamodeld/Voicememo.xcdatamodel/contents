@@ -6,5 +6,10 @@
         <attribute name="text" optional="YES" attributeType="String"/>
         <attribute name="title" optional="YES" attributeType="String"/>
         <attribute name="voiceFilePath" optional="YES" attributeType="String"/>
+        <attribute name="transcriptionStatus" optional="YES" attributeType="String"/>
+        <attribute name="transcriptionQuality" optional="YES" attributeType="Float" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="transcribedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="transcriptionError" optional="YES" attributeType="String"/>
+        <attribute name="segments" optional="YES" attributeType="Binary"/>
     </entity>
 </model>
