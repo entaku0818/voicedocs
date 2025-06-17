@@ -151,4 +151,27 @@ class FakeVoiceMemoController: VoiceMemoControllerProtocol {
         }
         return .none
     }
+    
+    // MARK: - フィラーワード除去機能
+    
+    func removeFillerWordsFromMemo(memoId: UUID, languages: [FillerWordLanguage] = FillerWordLanguage.allCases) -> FillerWordRemovalResult? {
+        if let index = voiceMemos.firstIndex(where: { $0.id == memoId }) {
+            let originalText = voiceMemos[index].text
+            let result = FillerWordRemover.shared.removeFillerWords(from: originalText, languages: languages)
+            
+            if result.hasChanges {
+                voiceMemos[index].text = result.cleanedText
+            }
+            
+            return result
+        }
+        return nil
+    }
+    
+    func previewFillerWordRemoval(memoId: UUID, languages: [FillerWordLanguage] = FillerWordLanguage.allCases) -> FillerWordRemovalResult? {
+        if let memo = voiceMemos.first(where: { $0.id == memoId }) {
+            return FillerWordRemover.shared.removeFillerWords(from: memo.text, languages: languages)
+        }
+        return nil
+    }
 }

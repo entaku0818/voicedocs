@@ -21,6 +21,8 @@ struct VoiceMemoDetailView: View {
     @State private var player: AVPlayer?
     @State private var interstitial: GADInterstitialAd?
     @StateObject private var additionalRecorder = AudioRecorder()
+    @State private var showingFillerWordPreview = false
+    @State private var fillerWordResult: FillerWordRemovalResult?
     
     private let voiceMemoController = VoiceMemoController.shared
 
@@ -236,6 +238,22 @@ struct VoiceMemoDetailView: View {
                         .cornerRadius(12)
                     }
                     
+                    // フィラーワード除去ボタン（テキストがある場合のみ表示）
+                    if !editedText.isEmpty && !isEditing {
+                        Button(action: previewFillerWordRemoval) {
+                            HStack {
+                                Image(systemName: "text.redaction")
+                                Text("フィラーワード除去")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.green)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+                        .disabled(additionalRecorder.isRecording)
+                    }
+                    
                     // 編集・共有ボタン
                     HStack(spacing: 12) {
                         Button(action: toggleEditing) {
@@ -287,6 +305,13 @@ struct VoiceMemoDetailView: View {
             Button("OK") { }
         } message: {
             Text("メモが更新されました。")
+        }
+        .sheet(isPresented: $showingFillerWordPreview) {
+            FillerWordPreviewView(
+                result: fillerWordResult,
+                onApply: applyFillerWordRemoval,
+                onCancel: { showingFillerWordPreview = false }
+            )
         }
     }
 
@@ -495,6 +520,30 @@ struct VoiceMemoDetailView: View {
         } else {
             return String(format: "%02d:%02d", minutes, seconds)
         }
+    }
+    
+    // MARK: - フィラーワード除去機能
+    
+    private func previewFillerWordRemoval() {
+        fillerWordResult = voiceMemoController.previewFillerWordRemoval(memoId: memo.id)
+        if fillerWordResult != nil {
+            showingFillerWordPreview = true
+        }
+    }
+    
+    private func applyFillerWordRemoval() {
+        guard let result = voiceMemoController.removeFillerWordsFromMemo(memoId: memo.id) else {
+            return
+        }
+        
+        if result.hasChanges {
+            editedText = result.cleanedText
+            refreshMemo()
+            onMemoUpdated?()
+            showingSaveAlert = true
+        }
+        
+        showingFillerWordPreview = false
     }
 }
 

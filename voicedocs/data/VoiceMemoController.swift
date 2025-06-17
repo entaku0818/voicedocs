@@ -25,6 +25,10 @@ protocol VoiceMemoControllerProtocol {
     func updateTranscriptionResult(memoId: UUID, text: String, quality: Float) -> Bool
     func updateTranscriptionError(memoId: UUID, error: String) -> Bool
     func getTranscriptionStatus(memoId: UUID) -> TranscriptionStatus?
+    
+    // フィラーワード除去機能
+    func removeFillerWordsFromMemo(memoId: UUID, languages: [FillerWordLanguage]) -> FillerWordRemovalResult?
+    func previewFillerWordRemoval(memoId: UUID, languages: [FillerWordLanguage]) -> FillerWordRemovalResult?
 }
 
 struct VoiceMemoController:VoiceMemoControllerProtocol {
@@ -418,6 +422,57 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
         } catch {
             print("Failed to get transcription status: \(error)")
             return .none
+        }
+    }
+    
+    // MARK: - フィラーワード除去機能
+    
+    // フィラーワードを除去してメモを更新
+    func removeFillerWordsFromMemo(memoId: UUID, languages: [FillerWordLanguage] = FillerWordLanguage.allCases) -> FillerWordRemovalResult? {
+        let context = container.viewContext
+        let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", memoId as CVarArg)
+        
+        do {
+            let voiceMemos = try context.fetch(fetchRequest)
+            guard let voiceMemo = voiceMemos.first,
+                  let originalText = voiceMemo.text else {
+                print("Voice memo not found or has no text for filler word removal")
+                return nil
+            }
+            
+            let result = FillerWordRemover.shared.removeFillerWords(from: originalText, languages: languages)
+            
+            if result.hasChanges {
+                voiceMemo.text = result.cleanedText
+                try context.save()
+            }
+            
+            return result
+        } catch {
+            print("Failed to remove filler words: \(error)")
+            return nil
+        }
+    }
+    
+    // フィラーワード除去のプレビュー（実際には更新しない）
+    func previewFillerWordRemoval(memoId: UUID, languages: [FillerWordLanguage] = FillerWordLanguage.allCases) -> FillerWordRemovalResult? {
+        let context = container.viewContext
+        let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", memoId as CVarArg)
+        
+        do {
+            let voiceMemos = try context.fetch(fetchRequest)
+            guard let voiceMemo = voiceMemos.first,
+                  let originalText = voiceMemo.text else {
+                print("Voice memo not found or has no text for filler word preview")
+                return nil
+            }
+            
+            return FillerWordRemover.shared.removeFillerWords(from: originalText, languages: languages)
+        } catch {
+            print("Failed to preview filler word removal: \(error)")
+            return nil
         }
     }
 }
