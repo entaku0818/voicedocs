@@ -40,11 +40,20 @@ xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs 
 - Production: `VoiceMemoController` (Core Data)
 - Testing: `FakeVoiceMemoController` (in-memory)
 - Model: `VoiceMemo` struct as DTO
+- Transcription state management: `TranscriptionStatus` enum
+- Audio segment management: `AudioSegment` struct with file references
 
 **Audio Processing**: `SpeechRecognitionManager`
 - Real-time Japanese speech recognition using `SFSpeechRecognizer`
 - Audio recording with `AVAudioEngine`
 - Automatic memo saving upon recording completion
+- Error handling with `SpeechRecognitionError` enum (conforms to Equatable)
+
+**Transcription Management**:
+- State tracking: none, inProgress, completed, failed
+- Quality metrics and confidence scoring
+- Error logging and recovery
+- Timestamp tracking for transcription events
 
 ### Core Data Model
 
@@ -54,6 +63,11 @@ Single entity **VoiceMemoModel**:
 - `text`: String (transcription)
 - `createdAt`: Date
 - `voiceFilePath`: String (local file reference)
+- `transcriptionStatus`: String (none/inProgress/completed/failed)
+- `transcriptionQuality`: Float (0.0-1.0 confidence score)
+- `transcribedAt`: Date (timestamp of transcription completion)
+- `transcriptionError`: String (error message if failed)
+- `segments`: Binary (JSON-encoded AudioSegment array)
 
 ### Key Technologies
 - **SwiftUI + Combine**: Reactive UI with `@ObservableObject`
