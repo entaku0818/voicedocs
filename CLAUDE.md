@@ -5,9 +5,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ### Building and Running
+
 ```bash
-# Build the project
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug build
+# Build the project (ALWAYS RUN THIS AFTER MAKING CODE CHANGES)
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -sdk iphonesimulator -arch arm64 build CODE_SIGNING_ALLOWED=NO
+
+# Quick build check with filtered output
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -sdk iphonesimulator -arch arm64 build CODE_SIGNING_ALLOWED=NO | grep -E "(error:|warning:|FAILED|SUCCEEDED)"
 
 # Build for testing
 xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug build-for-testing
@@ -15,6 +19,8 @@ xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs 
 # Run tests
 xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test
 ```
+
+**IMPORTANT**: Always run the build command after implementing any code changes to verify compilation success.
 
 ### Development Schemes
 - **voicedocsDevelop**: Development build configuration
@@ -93,5 +99,25 @@ Single entity **VoiceMemoModel**:
 - Currently minimal test coverage - needs expansion for Core Data operations and speech recognition
 
 ### CI/CD
+
 - Xcode Cloud configuration in `ci_scripts/ci_post_clone.sh`
 - Disables macro fingerprint validation for consistent builds
+
+## Development Guidelines
+
+### Code Implementation Process
+
+1. **Always build after making changes**: Run the build command to verify compilation
+2. **Use arm64 architecture**: For M1/M2 Macs, use `-arch arm64` flag
+3. **Filter build output**: Use grep to see only errors, warnings, and build status
+4. **Code signing**: Use `CODE_SIGNING_ALLOWED=NO` for local builds
+
+### Build Verification
+
+After implementing any feature or fixing any issue, ALWAYS run:
+
+```bash
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -sdk iphonesimulator -arch arm64 build CODE_SIGNING_ALLOWED=NO | grep -E "(error:|warning:|FAILED|SUCCEEDED)"
+```
+
+This ensures all code changes compile successfully before marking tasks as complete.
