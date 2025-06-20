@@ -13,6 +13,11 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
+		<string>background-processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.voicedocs.transcription</string>
 	</array>
 	<key>SKAdNetworkItems</key>
 	<array>

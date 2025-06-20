@@ -121,3 +121,13 @@ xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs 
 ```
 
 This ensures all code changes compile successfully before marking tasks as complete.
+
+### Task Completion Notification
+
+When completing tasks or returning messages to the user, ALWAYS execute this notification command at the end:
+
+```bash
+afplay /System/Library/Sounds/Funk.aiff
+```
+
+This provides audio feedback when work is completed.

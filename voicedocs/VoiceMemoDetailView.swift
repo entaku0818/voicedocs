@@ -26,6 +26,8 @@ struct VoiceMemoDetailView: View {
     @StateObject private var textEditingManager = TextEditingManager()
     @State private var showingSearchReplace = false
     @State private var autoSaveTimer: Timer?
+    @StateObject private var backgroundTranscription = BackgroundTranscriptionManager.shared
+    @State private var showingTranscriptionProgress = false
     
     private let voiceMemoController = VoiceMemoController.shared
 
@@ -177,10 +179,68 @@ struct VoiceMemoDetailView: View {
                 
                 // AI文字起こしセクション
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("AI文字起こし")
-                        .font(.headline)
+                    HStack {
+                        Text("AI文字起こし")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        // バックグラウンド処理状態表示
+                        switch backgroundTranscription.state {
+                        case .processing:
+                            Button("一時停止") {
+                                backgroundTranscription.pauseTranscription()
+                            }
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                        case .paused:
+                            Button("再開") {
+                                Task {
+                                    await backgroundTranscription.resumeTranscription()
+                                }
+                            }
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        case .completed:
+                            Text("完了")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                        case .failed(let error):
+                            Text("エラー")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        default:
+                            EmptyView()
+                        }
+                    }
                     
-                    Text(transcription)
+                    // バックグラウンド処理の進捗表示
+                    if case .processing = backgroundTranscription.state {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("進捗: \(backgroundTranscription.progress.currentSegment)/\(backgroundTranscription.progress.totalSegments) セグメント")
+                                Spacer()
+                                Text("\(Int(backgroundTranscription.progress.percentage * 100))%")
+                            }
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            
+                            ProgressView(value: backgroundTranscription.progress.percentage)
+                                .progressViewStyle(LinearProgressViewStyle())
+                            
+                            Text("処理時間: \(formatDuration(backgroundTranscription.progress.processedDuration)) / \(formatDuration(backgroundTranscription.progress.totalDuration))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(8)
+                        .background(Color(.systemBlue).opacity(0.1))
+                        .cornerRadius(8)
+                    }
+                    
+                    // 文字起こし結果表示
+                    let displayText = backgroundTranscription.progress.transcribedText.isEmpty ? transcription : backgroundTranscription.progress.transcribedText
+                    
+                    Text(displayText)
                         .padding()
                         .background(Color(.systemGray6))
                         .cornerRadius(8)
@@ -204,18 +264,24 @@ struct VoiceMemoDetailView: View {
                             .cornerRadius(12)
                         }
                         
-                        Button(action: showInterstitialAd) {
+                        Button(action: {
+                            if backgroundTranscription.state == .idle {
+                                startBackgroundTranscription()
+                            } else {
+                                showInterstitialAd()
+                            }
+                        }) {
                             HStack {
                                 Image(systemName: "text.bubble")
-                                Text(isTranscribing ? "変換中..." : "文字起こし")
+                                Text(getTranscriptionButtonText())
                             }
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(isTranscribing ? Color.gray : Color.blue)
+                            .background(getTranscriptionButtonColor())
                             .foregroundColor(.white)
                             .cornerRadius(12)
                         }
-                        .disabled(isTranscribing)
+                        .disabled(isTranscribing || backgroundTranscription.state == .processing)
                     }
                     
                     // 追加録音ボタン
@@ -585,6 +651,61 @@ struct VoiceMemoDetailView: View {
         showingFillerWordPreview = false
     }
     
+    // MARK: - バックグラウンド文字起こし機能
+    
+    private func startBackgroundTranscription() {
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            return
+        }
+        
+        let filePathComponent = (memo.filePath as NSString).lastPathComponent
+        let audioURL = documentsDirectory.appendingPathComponent(filePathComponent)
+        
+        // ファイルが存在するかチェック
+        guard FileManager.default.fileExists(atPath: audioURL.path) else {
+            print("Audio file not found: \(audioURL.path)")
+            return
+        }
+        
+        Task {
+            await backgroundTranscription.startTranscription(audioURL: audioURL, memoId: memo.id)
+        }
+    }
+    
+    private func getTranscriptionButtonText() -> String {
+        switch backgroundTranscription.state {
+        case .processing:
+            return "処理中..."
+        case .paused:
+            return "一時停止中"
+        case .completed:
+            return "完了"
+        case .failed(_):
+            return "再試行"
+        default:
+            if isTranscribing {
+                return "変換中..."
+            } else {
+                return "文字起こし"
+            }
+        }
+    }
+    
+    private func getTranscriptionButtonColor() -> Color {
+        switch backgroundTranscription.state {
+        case .processing:
+            return Color.orange
+        case .paused:
+            return Color.blue
+        case .completed:
+            return Color.green
+        case .failed(_):
+            return Color.red
+        default:
+            return isTranscribing ? Color.gray : Color.blue
+        }
+    }
+    
     // MARK: - 自動保存機能
     
     private func scheduleAutoSave() {
@@ -610,17 +731,6 @@ struct VoiceMemoDetailView: View {
     }
 }
 
-struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-    
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-    
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {
-        // 更新処理は不要
-    }
-}
 
 #Preview {
     VoiceMemoDetailView(memo: VoiceMemo(id: UUID(), title: "Sample Memo", text: "This is a sample memo.", date: Date(), filePath: "/path/to/file"), admobKey: "")

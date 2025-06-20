@@ -6,6 +6,8 @@ struct ContentView: View {
     @State private var showingQualitySettings = false
     @State private var showingLanguageSettings = false
     @State private var showingError = false
+    @State private var showingVoiceMemoList = false
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationView {
@@ -140,12 +142,31 @@ struct ContentView: View {
             .padding()
             .navigationTitle("音声録音")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { showingVoiceMemoList = true }) {
+                        Image(systemName: "list.bullet")
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showingSettings = true }) {
+                        Image(systemName: "gearshape")
+                    }
+                }
+            }
         }
         .sheet(isPresented: $showingQualitySettings) {
             QualitySettingsView(audioRecorder: audioRecorder)
         }
         .sheet(isPresented: $showingLanguageSettings) {
             LanguageSettingsView(speechRecognitionManager: speechRecognitionManager)
+        }
+        .sheet(isPresented: $showingVoiceMemoList) {
+            VoiceMemoListView()
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView(audioRecorder: audioRecorder, speechRecognitionManager: speechRecognitionManager)
         }
         .alert("音声認識エラー", isPresented: $showingError) {
             Button("クリア") {
@@ -303,6 +324,91 @@ struct AudioLevelView: View {
             return .green
         } else {
             return .blue
+        }
+    }
+}
+
+struct SettingsView: View {
+    @ObservedObject var audioRecorder: AudioRecorder
+    @ObservedObject var speechRecognitionManager: SpeechRecognitionManager
+    @Environment(\.dismiss) private var dismiss
+    @State private var showingQualitySettings = false
+    @State private var showingLanguageSettings = false
+    
+    var body: some View {
+        NavigationView {
+            List {
+                Section("録音設定") {
+                    HStack {
+                        Image(systemName: "waveform.circle")
+                        Text("録音品質")
+                        Spacer()
+                        Text(audioRecorder.recordingQuality.displayName)
+                            .foregroundColor(.secondary)
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.secondary)
+                    }
+                    .onTapGesture {
+                        showingQualitySettings = true
+                    }
+                }
+                
+                Section("音声認識設定") {
+                    HStack {
+                        Image(systemName: "mic.circle")
+                        Text("認識言語")
+                        Spacer()
+                        Text(speechRecognitionManager.currentLanguage.displayName)
+                            .foregroundColor(.secondary)
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.secondary)
+                    }
+                    .onTapGesture {
+                        showingLanguageSettings = true
+                    }
+                    
+                    HStack {
+                        Image(systemName: "checkmark.circle")
+                        Text("認識状態")
+                        Spacer()
+                        Text(speechRecognitionManager.isAvailable ? "利用可能" : "利用不可")
+                            .foregroundColor(speechRecognitionManager.isAvailable ? .green : .red)
+                    }
+                }
+                
+                Section("アプリ情報") {
+                    HStack {
+                        Image(systemName: "info.circle")
+                        Text("バージョン")
+                        Spacer()
+                        Text("1.0.0")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Image(systemName: "doc.text")
+                        Text("ライセンス")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("設定")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("完了") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showingQualitySettings) {
+            QualitySettingsView(audioRecorder: audioRecorder)
+        }
+        .sheet(isPresented: $showingLanguageSettings) {
+            LanguageSettingsView(speechRecognitionManager: speechRecognitionManager)
         }
     }
 }
