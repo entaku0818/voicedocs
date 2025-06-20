@@ -23,6 +23,9 @@ struct VoiceMemoDetailView: View {
     @StateObject private var additionalRecorder = AudioRecorder()
     @State private var showingFillerWordPreview = false
     @State private var fillerWordResult: FillerWordRemovalResult?
+    @StateObject private var textEditingManager = TextEditingManager()
+    @State private var showingSearchReplace = false
+    @State private var autoSaveTimer: Timer?
     
     private let voiceMemoController = VoiceMemoController.shared
 
@@ -94,15 +97,43 @@ struct VoiceMemoDetailView: View {
                 
                 // テキスト編集セクション
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("メモ")
-                        .font(.headline)
+                    HStack {
+                        Text("メモ")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        // 編集モード時のツールバー
+                        if isEditing {
+                            HStack(spacing: 8) {
+                                Button(action: { textEditingManager.undo() }) {
+                                    Image(systemName: "arrow.uturn.backward")
+                                }
+                                .disabled(!textEditingManager.canUndo)
+                                
+                                Button(action: { textEditingManager.redo() }) {
+                                    Image(systemName: "arrow.uturn.forward")
+                                }
+                                .disabled(!textEditingManager.canRedo)
+                                
+                                Button(action: { showingSearchReplace = true }) {
+                                    Image(systemName: "magnifyingglass")
+                                }
+                            }
+                            .font(.title2)
+                        }
+                    }
                     
                     if isEditing {
-                        TextEditor(text: $editedText)
+                        TextEditor(text: $textEditingManager.text)
                             .frame(minHeight: 100)
                             .padding(8)
                             .background(Color(.systemGray6))
                             .cornerRadius(8)
+                            .onChange(of: textEditingManager.text) { newText in
+                                editedText = newText
+                                scheduleAutoSave()
+                            }
                     } else {
                         Text(editedText.isEmpty ? "メモなし" : editedText)
                             .padding()
@@ -313,6 +344,16 @@ struct VoiceMemoDetailView: View {
                 onCancel: { showingFillerWordPreview = false }
             )
         }
+        .sheet(isPresented: $showingSearchReplace) {
+            TextSearchReplaceView(
+                text: $textEditingManager.text,
+                onDismiss: { showingSearchReplace = false },
+                onTextChanged: { newText in
+                    editedText = newText
+                    scheduleAutoSave()
+                }
+            )
+        }
     }
 
     private func loadInterstitialAd() {
@@ -407,17 +448,15 @@ struct VoiceMemoDetailView: View {
     
     private func toggleEditing() {
         if isEditing {
-            // 保存処理
-            let success = voiceMemoController.updateVoiceMemo(
-                id: memo.id,
-                title: editedTitle.isEmpty ? "無題" : editedTitle,
-                text: editedText
-            )
+            // タイマーをキャンセル
+            autoSaveTimer?.invalidate()
+            autoSaveTimer = nil
             
-            if success {
-                showingSaveAlert = true
-                onMemoUpdated?()
-            }
+            // 最終保存処理
+            saveChanges()
+        } else {
+            // 編集開始時にTextEditingManagerを初期化
+            textEditingManager.updateText(editedText, recordUndo: false)
         }
         isEditing.toggle()
     }
@@ -544,6 +583,30 @@ struct VoiceMemoDetailView: View {
         }
         
         showingFillerWordPreview = false
+    }
+    
+    // MARK: - 自動保存機能
+    
+    private func scheduleAutoSave() {
+        // 既存のタイマーをキャンセル
+        autoSaveTimer?.invalidate()
+        
+        // 3秒後に自動保存
+        autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
+            saveChanges()
+        }
+    }
+    
+    private func saveChanges() {
+        let success = voiceMemoController.updateVoiceMemo(
+            id: memo.id,
+            title: editedTitle.isEmpty ? "無題" : editedTitle,
+            text: editedText
+        )
+        
+        if success {
+            onMemoUpdated?()
+        }
     }
 }
 
