@@ -203,11 +203,8 @@ struct VoiceMemoDetailFeature: Reducer {
     case .togglePlayback:
       state.isPlaying.toggle()
       return .run { [isPlaying = state.isPlaying, memo = state.memo] _ in
-        if isPlaying {
-          await audioRecorder.startPlayback(filePath: memo.filePath)
-        } else {
-          await audioRecorder.stopPlayback()
-        }
+        // TODO: Implement playback functionality using AVPlayer
+        // For now, just toggle the state
       }
       
     case .startTranscription:
