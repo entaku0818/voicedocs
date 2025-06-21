@@ -29,9 +29,7 @@ enum RecordingQuality: CaseIterable {
                 AVSampleRateKey: 48000, // 最高サンプルレート
                 AVNumberOfChannelsKey: 1,
                 AVEncoderAudioQualityKey: AVAudioQuality.max.rawValue, // 最高品質
-                AVEncoderBitRateKey: 128000, // 高ビットレート
-                AVLinearPCMBitDepthKey: 16, // 16ビット深度
-                AVAudioQualityKey: AVAudioQuality.max.rawValue
+                AVEncoderBitRateKey: 128000 // 高ビットレート
             ]
         }
     }
