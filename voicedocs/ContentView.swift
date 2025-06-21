@@ -116,13 +116,14 @@ struct ContentView: View {
         .navigationTitle("音声録音")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: { showingSettings = true }) {
                     Image(systemName: "gearshape")
                 }
+                .disabled(audioRecorder.isRecording)
             }
         }
+        .navigationBarBackButtonHidden(audioRecorder.isRecording)
 
         .sheet(isPresented: $showingQualitySettings) {
             QualitySettingsView(audioRecorder: audioRecorder)
@@ -135,6 +136,15 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView(audioRecorder: audioRecorder, speechRecognitionManager: speechRecognitionManager)
+        }
+        .onChange(of: audioRecorder.isRecording) { isRecording in
+            // 録音中はシートを閉じる
+            if isRecording {
+                showingQualitySettings = false
+                showingLanguageSettings = false
+                showingVoiceMemoList = false
+                showingSettings = false
+            }
         }
         .onChange(of: speechRecognitionManager.lastError) { error in
             showingError = error != nil
