@@ -1,8 +1,201 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@%%" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@%%"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@%%"
+          }
+        }
+      }
+    },
+    "%lld/%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "%lld%%" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%%"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%%"
+          }
+        }
+      }
+    },
+    "%lld件見つかりました" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld found"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld件見つかりました"
+          }
+        }
+      }
+    },
+    "%lld個" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld items"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld個"
+          }
+        }
+      }
+    },
+    "%lld箇所を「%@」に置換しますか？" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld箇所を「%2$@」に置換しますか？"
+          }
+        }
+      }
+    },
+    "✨ フィラーワード除去" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✨ Remove Filler Words"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✨ フィラーワード除去"
+          }
+        }
+      }
+    },
+    "🎤 録音を追加" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "🎤 Add Recording"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "🎤 録音を追加"
+          }
+        }
+      }
+    },
+    "💾 保存" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "💾 Save"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "💾 保存"
+          }
+        }
+      }
+    },
+    "📝 編集" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📝 Edit"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📝 編集"
+          }
+        }
+      }
+    },
+    "📤 共有" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📤 Share"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📤 共有"
+          }
+        }
+      }
+    },
+    "1.0.0" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1.0.0"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1.0.0"
+          }
+        }
+      }
+    },
     "AI文字起こし" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI Transcription"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI文字起こし"
+          }
+        }
+      }
     },
     "AI文字起こしを開始" : {
       "extractionState" : "stale",
@@ -42,7 +235,20 @@
 
     },
     "OK" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        }
+      }
     },
     "Record New Memo" : {
       "extractionState" : "stale",
@@ -112,8 +318,43 @@
         }
       }
     },
-    "キャンセル" : {
+    "アプリ情報" : {
 
+    },
+    "エラー" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "エラー"
+          }
+        }
+      }
+    },
+    "オプション" : {
+
+    },
+    "キャンセル" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャンセル"
+          }
+        }
+      }
     },
     "クリア" : {
 
@@ -121,13 +362,48 @@
     "このメモを削除しますか？この操作は取り消せません。" : {
 
     },
+    "すべて置換" : {
+
+    },
     "セグメント %lld" : {
 
     },
+    "その他の操作" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More Actions"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "その他の操作"
+          }
+        }
+      }
+    },
     "タイトル" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Title"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タイトル"
+          }
+        }
+      }
     },
     "タイトルを入力" : {
+
+    },
+    "バージョン" : {
 
     },
     "ファイルサイズ:" : {
@@ -136,8 +412,30 @@
     "ファイル情報" : {
 
     },
-    "メモ" : {
+    "フィラーワードは見つかりませんでした" : {
 
+    },
+    "フィラーワード除去プレビュー" : {
+
+    },
+    "プレビューを読み込めませんでした" : {
+
+    },
+    "メモ" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Memo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メモ"
+          }
+        }
+      }
     },
     "メモが更新されました。" : {
 
@@ -148,10 +446,16 @@
     "メモを検索" : {
 
     },
-    "作成日時:" : {
+    "ライセンス" : {
 
     },
-    "保存" : {
+    "一時停止" : {
+
+    },
+    "下のボタンで新しい録音を開始してください" : {
+
+    },
+    "作成日時:" : {
 
     },
     "保存完了" : {
@@ -174,7 +478,20 @@
       }
     },
     "共有" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "共有"
+          }
+        }
+      }
     },
     "再生" : {
       "localizations" : {
@@ -192,7 +509,45 @@
         }
       }
     },
+    "再開" : {
+
+    },
+    "処理時間: %@ / %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "処理時間: %1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "利用不可" : {
+
+    },
+    "利用可能" : {
+
+    },
     "削除" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "削除"
+          }
+        }
+      }
+    },
+    "前へ" : {
+
+    },
+    "単語単位で検索" : {
 
     },
     "合計時間: %@" : {
@@ -204,37 +559,138 @@
     "品質設定" : {
 
     },
-    "変換中..." : {
+    "変更前" : {
+
+    },
+    "変更前後の比較" : {
+
+    },
+    "変更後" : {
+
+    },
+    "大文字小文字を区別" : {
 
     },
     "完了" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完了"
+          }
+        }
+      }
     },
-    "文字起こし" : {
+    "文字数削減率" : {
 
     },
     "新しい録音" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Recording"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新しい録音"
+          }
+        }
+      }
     },
     "日本語: 日本語の音声認識に最適化" : {
+
+    },
+    "検索" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "検索"
+          }
+        }
+      }
+    },
+    "検索・置換" : {
+
+    },
+    "検索テキスト" : {
 
     },
     "標準品質: 22kHz, 中品質" : {
 
     },
+    "次へ" : {
+
+    },
     "精度: %lld%%" : {
 
     },
-    "編集" : {
+    "置換" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replace"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "置換"
+          }
+        }
+      }
+    },
+    "置換後のテキスト" : {
+
+    },
+    "見つかりませんでした" : {
 
     },
     "言語設定" : {
 
     },
+    "設定" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定"
+          }
+        }
+      }
+    },
     "設定について" : {
 
     },
     "認識中..." : {
+
+    },
+    "認識状態" : {
+
+    },
+    "認識言語" : {
 
     },
     "追加録音セグメント" : {
@@ -246,7 +702,33 @@
     "追加録音停止" : {
 
     },
-    "録音を追加" : {
+    "進捗: %lld/%lld セグメント" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "進捗: %1$lld/%2$lld セグメント"
+          }
+        }
+      }
+    },
+    "適用" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apply"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "適用"
+          }
+        }
+      }
+    },
+    "録音ファイルがありません" : {
 
     },
     "録音中..." : {
@@ -256,7 +738,20 @@
 
     },
     "録音停止" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop Recording"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "録音停止"
+          }
+        }
+      }
     },
     "録音品質" : {
 
@@ -274,10 +769,45 @@
 
     },
     "録音開始" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start Recording"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "録音開始"
+          }
+        }
+      }
+    },
+    "除去される単語" : {
+
+    },
+    "除去される単語数" : {
+
+    },
+    "除去統計" : {
 
     },
     "音声メモ" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice Memos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音声メモ"
+          }
+        }
+      }
     },
     "音声レベル" : {
 
@@ -301,7 +831,20 @@
 
     },
     "音声録音" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice Recording"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音声録音"
+          }
+        }
+      }
     },
     "高品質: 44kHz, 高品質" : {
 
