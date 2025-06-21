@@ -18,6 +18,8 @@ struct VoiceMemoListView: View {
     @State private var showingSortOptions = false
     @State private var showingShareSheet = false
     @State private var shareItems: [Any] = []
+    @State private var showingSearchAndSort = false
+    @State private var isSearchActive = false
     private let admobKey: String
 
     init(voiceMemoController: VoiceMemoControllerProtocol = VoiceMemoController.shared, admobKey: String = "") {
@@ -28,20 +30,51 @@ struct VoiceMemoListView: View {
 
     var body: some View {
         NavigationView {
-            VStack {
-                // ソートオプション表示
-                if !voiceMemos.isEmpty {
-                    HStack {
-                        Text("ソート: \(sortOption.displayName)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Button("並び替え") {
-                            showingSortOptions = true
+            VStack(spacing: 0) {
+                // 検索とソートセクション
+                if isSearchActive {
+                    VStack(spacing: 12) {
+                        // 検索バー
+                        HStack {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(.secondary)
+                            TextField("メモを検索", text: $searchText)
+                            if !searchText.isEmpty {
+                                Button(action: { searchText = "" }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.secondary)
+                                }
+                            }
                         }
-                        .font(.caption)
+                        .padding(12)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(10)
+                        
+                        // ソートオプション
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(SortOption.allCases, id: \.self) { option in
+                                    Button(action: { sortOption = option }) {
+                                        Text(option.displayName)
+                                            .font(.caption)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(sortOption == option ? Color.accentColor : Color(.systemGray5))
+                                            .foregroundColor(sortOption == option ? .white : .primary)
+                                            .cornerRadius(15)
+                                    }
+                                }
+                            }
+                        }
                     }
-                    .padding(.horizontal)
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .overlay(
+                        Rectangle()
+                            .fill(Color(.separator))
+                            .frame(height: 0.5),
+                        alignment: .bottom
+                    )
                 }
                 
                 List {
@@ -84,15 +117,27 @@ struct VoiceMemoListView: View {
                         }
                     }
                 }
-                .searchable(text: $searchText, prompt: "メモを検索")
-                .navigationTitle("音声メモ")
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        Text("音声メモ")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                    }
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(action: { showingSortOptions = true }) {
-                            Image(systemName: "arrow.up.arrow.down")
+                        Button(action: { 
+                            withAnimation {
+                                isSearchActive.toggle()
+                                if !isSearchActive {
+                                    searchText = ""
+                                }
+                            }
+                        }) {
+                            Image(systemName: isSearchActive ? "xmark" : "magnifyingglass")
                         }
                     }
                 }
+
 
                 NavigationLink(destination: ContentView()) {
                     HStack {
@@ -119,16 +164,6 @@ struct VoiceMemoListView: View {
                 Button("キャンセル", role: .cancel) { }
             } message: {
                 Text("このメモを削除しますか？この操作は取り消せません。")
-            }
-            .actionSheet(isPresented: $showingSortOptions) {
-                ActionSheet(
-                    title: Text("並び順を選択"),
-                    buttons: SortOption.allCases.map { option in
-                        .default(Text(option.displayName)) {
-                            sortOption = option
-                        }
-                    } + [.cancel(Text("キャンセル"))]
-                )
             }
             .sheet(isPresented: $showingShareSheet) {
                 ShareSheet(items: shareItems)
@@ -308,6 +343,7 @@ struct ShareSheet: UIViewControllerRepresentable {
         // 更新処理は不要
     }
 }
+
 
 #Preview {
     VoiceMemoListView(voiceMemoController: FakeVoiceMemoController(), admobKey: "")
