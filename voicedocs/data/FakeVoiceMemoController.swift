@@ -40,6 +40,10 @@ class FakeVoiceMemoController: VoiceMemoControllerProtocol {
         return voiceMemos.sorted { $0.date > $1.date }
     }
     
+    func fetchVoiceMemo(id: UUID) -> VoiceMemo? {
+        return voiceMemos.first(where: { $0.id == id })
+    }
+    
     func deleteVoiceMemo(id: UUID) -> Bool {
         if let index = voiceMemos.firstIndex(where: { $0.id == id }) {
             voiceMemos.remove(at: index)
@@ -149,7 +153,7 @@ class FakeVoiceMemoController: VoiceMemoControllerProtocol {
         if let memo = voiceMemos.first(where: { $0.id == memoId }) {
             return memo.transcriptionStatus
         }
-        return .none
+        return TranscriptionStatus.none
     }
     
     // MARK: - フィラーワード除去機能

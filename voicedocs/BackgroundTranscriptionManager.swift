@@ -20,7 +20,7 @@ enum TranscriptionState: Equatable {
     case failed(String)
 }
 
-struct TranscriptionProgress {
+struct TranscriptionProgress: Equatable {
     let currentSegment: Int
     let totalSegments: Int
     let processedDuration: TimeInterval

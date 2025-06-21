@@ -8,6 +8,7 @@ import AVFoundation
 protocol VoiceMemoControllerProtocol {
     func saveVoiceMemo(title: String, text: String, filePath: String?)
     func fetchVoiceMemos() -> [VoiceMemo]
+    func fetchVoiceMemo(id: UUID) -> VoiceMemo?
     func deleteVoiceMemo(id: UUID) -> Bool
     func updateVoiceMemo(id: UUID, title: String?, text: String?) -> Bool
     func getFileSize(filePath: String) -> Int64?
@@ -587,6 +588,51 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             return FillerWordRemover.shared.removeFillerWords(from: originalText, languages: languages)
         } catch {
             print("Failed to preview filler word removal: \(error)")
+            return nil
+        }
+    }
+    
+    // 単一のボイスメモを取得
+    func fetchVoiceMemo(id: UUID) -> VoiceMemo? {
+        let context = container.viewContext
+        let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        
+        do {
+            let voiceMemos = try context.fetch(fetchRequest)
+            guard let memo = voiceMemos.first else {
+                return nil
+            }
+            
+            var voiceMemo = VoiceMemo(
+                id: memo.id ?? UUID(),
+                title: memo.title ?? "",
+                text: memo.text ?? "",
+                date: memo.createdAt ?? Date(),
+                filePath: memo.voiceFilePath ?? ""
+            )
+            
+            // 文字起こし関連情報を復元
+            if let statusString = memo.transcriptionStatus {
+                voiceMemo.transcriptionStatus = TranscriptionStatus(rawValue: statusString) ?? .none
+            }
+            voiceMemo.transcriptionQuality = memo.transcriptionQuality
+            voiceMemo.transcribedAt = memo.transcribedAt
+            voiceMemo.transcriptionError = memo.transcriptionError
+            
+            // セグメント情報を復元
+            if let segmentsData = memo.segments {
+                do {
+                    let segments = try JSONDecoder().decode([AudioSegment].self, from: segmentsData)
+                    voiceMemo.segments = segments
+                } catch {
+                    print("Failed to decode segments: \(error)")
+                }
+            }
+            
+            return voiceMemo
+        } catch {
+            print("Failed to fetch voice memo: \(error)")
             return nil
         }
     }

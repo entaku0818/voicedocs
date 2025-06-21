@@ -33,7 +33,7 @@ struct FillerWordPattern {
     }
 }
 
-struct FillerWordRemovalResult {
+struct FillerWordRemovalResult: Equatable {
     let originalText: String
     let cleanedText: String
     let removedWords: [String]
