@@ -8,154 +8,122 @@ struct ContentView: View {
     @State private var showingError = false
     @State private var showingVoiceMemoList = false
     @State private var showingSettings = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                // 設定エリア
-                VStack(spacing: 8) {
-                    HStack {
-                        Text("録音品質: \(audioRecorder.recordingQuality.displayName)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Button("品質設定") {
-                            showingQualitySettings = true
-                        }
+
+        VStack(spacing: 20) {
+            // 設定エリア
+            VStack(spacing: 8) {
+
+                if !speechRecognitionManager.isAvailable {
+                    Text("音声認識が利用できません")
                         .font(.caption)
-                        .disabled(audioRecorder.isRecording)
-                    }
-                    
-                    HStack {
-                        Text("音声認識: \(speechRecognitionManager.currentLanguage.displayName)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Button("言語設定") {
-                            showingLanguageSettings = true
-                        }
-                        .font(.caption)
-                        .disabled(audioRecorder.isRecording || speechRecognitionManager.isRecognizing)
-                    }
-                    
-                    if !speechRecognitionManager.isAvailable {
-                        Text("音声認識が利用できません")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    }
+                        .foregroundColor(.red)
                 }
-                .padding(.horizontal)
-                
-                // 音声認識結果表示
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("音声認識結果")
-                            .font(.headline)
-                        Spacer()
-                        if speechRecognitionManager.isRecognizing {
-                            HStack(spacing: 4) {
-                                ProgressView()
-                                    .scaleEffect(0.7)
-                                Text("認識中...")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        if speechRecognitionManager.recognitionQuality > 0 {
-                            Text("精度: \(Int(speechRecognitionManager.recognitionQuality * 100))%")
+            }
+            .padding(.horizontal)
+
+            // 音声認識結果表示
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("音声認識結果")
+                        .font(.headline)
+                    Spacer()
+                    if speechRecognitionManager.isRecognizing {
+                        HStack(spacing: 4) {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("認識中...")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
-                    
-                    ScrollView {
-                        Text(speechRecognitionManager.transcribedText.isEmpty ? "録音を開始してください" : speechRecognitionManager.transcribedText)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                    }
-                    .frame(minHeight: 100, maxHeight: 200)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
-                }
-
-                // 録音時間表示（常に表示、録音中は更新）
-                VStack(spacing: 8) {
-                    Text("録音時間: \(formatTime(audioRecorder.recordingDuration))")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(audioRecorder.isRecording ? .red : .secondary)
-                    
-                    if audioRecorder.isRecording {
-                        Text("録音中...")
+                    if speechRecognitionManager.recognitionQuality > 0 {
+                        Text("精度: \(Int(speechRecognitionManager.recognitionQuality * 100))%")
                             .font(.caption)
-                            .foregroundColor(.red)
-                            .opacity(0.8)
+                            .foregroundColor(.secondary)
                     }
                 }
 
-                // 音声レベル表示
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("音声レベル")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    AudioLevelView(audioLevel: audioRecorder.audioLevel)
-                        .frame(height: 20)
+                ScrollView {
+                    Text(speechRecognitionManager.transcribedText.isEmpty ? "録音を開始してください" : speechRecognitionManager.transcribedText)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
                 }
-                .padding(.horizontal)
+                .frame(minHeight: 100, maxHeight: 200)
+                .background(Color(.systemGray6))
+                .cornerRadius(10)
+            }
 
-                // 録音ボタン
-                Button(action: {
-                    Task {
-                        if audioRecorder.isRecording {
-                            // 録音停止
-                            audioRecorder.stopRecording()
-                            await speechRecognitionManager.stopSpeechRecognition()
-                        } else {
-                            // 録音開始
-                            do {
-                                audioRecorder.startRecording()
-                                try await speechRecognitionManager.startSpeechRecognition()
-                            } catch {
-                                print("Failed to start recording: \(error)")
-                                speechRecognitionManager.lastError = .configurationFailed
-                            }
+            // 録音時間表示（常に表示、録音中は更新）
+            VStack(spacing: 8) {
+                Text("録音時間: \(formatTime(audioRecorder.recordingDuration))")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(audioRecorder.isRecording ? .red : .secondary)
+
+                if audioRecorder.isRecording {
+                    Text("録音中...")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .opacity(0.8)
+                }
+            }
+
+
+
+            // 録音ボタン
+            Button(action: {
+                Task {
+                    if audioRecorder.isRecording {
+                        // 録音停止
+                        audioRecorder.stopRecording()
+                        await speechRecognitionManager.stopSpeechRecognition()
+                        // 前のページに戻る
+                        dismiss()
+                    } else {
+                        // 録音開始
+                        do {
+                            audioRecorder.startRecording()
+                            try await speechRecognitionManager.startSpeechRecognition()
+                        } catch {
+                            print("Failed to start recording: \(error)")
+                            speechRecognitionManager.lastError = .configurationFailed
                         }
                     }
-                }) {
-                    HStack {
-                        Image(systemName: audioRecorder.isRecording ? "stop.circle.fill" : "record.circle.fill")
-                            .font(.title)
-                        Text(audioRecorder.isRecording ? "録音停止" : "録音開始")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(audioRecorder.isRecording ? Color.red : Color.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                    .scaleEffect(audioRecorder.isRecording ? 1.05 : 1.0)
-                    .animation(.easeInOut(duration: 0.1), value: audioRecorder.isRecording)
                 }
-                .disabled(speechRecognitionManager.isRecognizing && !audioRecorder.isRecording)
+            }) {
+                HStack {
+                    Image(systemName: audioRecorder.isRecording ? "stop.circle.fill" : "record.circle.fill")
+                        .font(.title)
+                    Text(audioRecorder.isRecording ? "録音停止" : "録音開始")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(audioRecorder.isRecording ? Color.red : Color.green)
+                .foregroundColor(.white)
+                .cornerRadius(12)
+                .scaleEffect(audioRecorder.isRecording ? 1.05 : 1.0)
+                .animation(.easeInOut(duration: 0.1), value: audioRecorder.isRecording)
             }
-            .padding()
-            .navigationTitle("音声録音")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { showingVoiceMemoList = true }) {
-                        Image(systemName: "list.bullet")
-                    }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingSettings = true }) {
-                        Image(systemName: "gearshape")
-                    }
+            .disabled(speechRecognitionManager.isRecognizing && !audioRecorder.isRecording)
+            Spacer()
+        }
+        .padding()
+        .navigationTitle("音声録音")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { showingSettings = true }) {
+                    Image(systemName: "gearshape")
                 }
             }
         }
+
         .sheet(isPresented: $showingQualitySettings) {
             QualitySettingsView(audioRecorder: audioRecorder)
         }
@@ -167,14 +135,6 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView(audioRecorder: audioRecorder, speechRecognitionManager: speechRecognitionManager)
-        }
-        .alert("音声認識エラー", isPresented: $showingError) {
-            Button("クリア") {
-                speechRecognitionManager.lastError = nil
-            }
-            Button("OK") { }
-        } message: {
-            Text(speechRecognitionManager.lastError?.errorDescription ?? "")
         }
         .onChange(of: speechRecognitionManager.lastError) { error in
             showingError = error != nil
