@@ -16,7 +16,10 @@
       "mcp__ide__getDiagnostics",
       "Bash(git add:*)",
       "Bash(play:*)",
-      "Bash(afplay:*)"
+      "Bash(afplay:*)",
+      "Bash(git commit:*)",
+      "Bash(timeout 30 xcodebuild:*)",
+      "Bash(timeout 60 xcodebuild:*)"
     ],
     "deny": []
   }

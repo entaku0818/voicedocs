@@ -98,9 +98,10 @@ struct VoiceMemoListView: View {
                     } else {
                         ForEach(sortedAndFilteredMemos, id: \.id) { memo in
                             NavigationLink(destination: VoiceMemoDetailView(
-                                store: Store(initialState: VoiceMemoDetailFeature.State(memo: memo)) {
-                                    VoiceMemoDetailFeature()
-                                },
+                                store: Store(
+                                    initialState: VoiceMemoDetailFeature.State(memo: memo),
+                                    reducer: { VoiceMemoDetailFeature() }
+                                ),
                                 admobKey: admobKey,
                                 onMemoUpdated: { refreshMemos() }
                             )) {
