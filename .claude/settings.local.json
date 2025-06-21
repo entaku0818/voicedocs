@@ -13,7 +13,10 @@
       "Bash(xcodebuild:*)",
       "Bash(swift --version)",
       "Bash(defaults write:*)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(git add:*)",
+      "Bash(play:*)",
+      "Bash(afplay:*)"
     ],
     "deny": []
   }
