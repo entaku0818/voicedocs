@@ -28,6 +28,7 @@ struct VoiceMemoDetailView: View {
     @State private var autoSaveTimer: Timer?
     @StateObject private var backgroundTranscription = BackgroundTranscriptionManager.shared
     @State private var showingTranscriptionProgress = false
+    @State private var showingMoreMenu = false
     
     private let voiceMemoController = VoiceMemoController.shared
 
@@ -248,7 +249,7 @@ struct VoiceMemoDetailView: View {
                         .font(.body)
                 }
                 
-                // 操作ボタン
+                // メインアクションボタン
                 VStack(spacing: 12) {
                     // 再生・文字起こしボタン
                     HStack(spacing: 12) {
@@ -284,20 +285,19 @@ struct VoiceMemoDetailView: View {
                         .disabled(isTranscribing || backgroundTranscription.state == .processing)
                     }
                     
-                    // 追加録音ボタン
-                    Button(action: toggleAdditionalRecording) {
+                    // その他メニューボタン
+                    Button(action: { showingMoreMenu = true }) {
                         HStack {
-                            Image(systemName: additionalRecorder.isRecording ? "stop.circle.fill" : "mic.badge.plus")
-                            Text(additionalRecorder.isRecording ? "追加録音停止" : "録音を追加")
+                            Image(systemName: "ellipsis.circle")
+                            Text("その他の操作")
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(additionalRecorder.isRecording ? Color.red : Color.indigo)
+                        .background(Color.gray)
                         .foregroundColor(.white)
                         .cornerRadius(12)
-                        .scaleEffect(additionalRecorder.isRecording ? 1.05 : 1.0)
-                        .animation(.easeInOut(duration: 0.1), value: additionalRecorder.isRecording)
                     }
+                    .disabled(additionalRecorder.isRecording)
                     
                     // 追加録音中のUI
                     if additionalRecorder.isRecording {
@@ -329,55 +329,23 @@ struct VoiceMemoDetailView: View {
                                 }
                                 .frame(height: 20)
                             }
+                            
+                            // 追加録音停止ボタン
+                            Button(action: toggleAdditionalRecording) {
+                                HStack {
+                                    Image(systemName: "stop.circle.fill")
+                                    Text("追加録音停止")
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.red)
+                                .foregroundColor(.white)
+                                .cornerRadius(12)
+                            }
                         }
                         .padding()
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
-                    }
-                    
-                    // フィラーワード除去ボタン（テキストがある場合のみ表示）
-                    if !editedText.isEmpty && !isEditing {
-                        Button(action: previewFillerWordRemoval) {
-                            HStack {
-                                Image(systemName: "text.redaction")
-                                Text("フィラーワード除去")
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                        }
-                        .disabled(additionalRecorder.isRecording)
-                    }
-                    
-                    // 編集・共有ボタン
-                    HStack(spacing: 12) {
-                        Button(action: toggleEditing) {
-                            HStack {
-                                Image(systemName: isEditing ? "checkmark" : "pencil")
-                                Text(isEditing ? "保存" : "編集")
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(isEditing ? Color.orange : Color.purple)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                        }
-                        .disabled(additionalRecorder.isRecording)
-                        
-                        Button(action: { showingShareSheet = true }) {
-                            HStack {
-                                Image(systemName: "square.and.arrow.up")
-                                Text("共有")
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.cyan)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                        }
-                        .disabled(additionalRecorder.isRecording)
                     }
                 }
             }
@@ -418,6 +386,12 @@ struct VoiceMemoDetailView: View {
                     editedText = newText
                     scheduleAutoSave()
                 }
+            )
+        }
+        .actionSheet(isPresented: $showingMoreMenu) {
+            ActionSheet(
+                title: Text("その他の操作"),
+                buttons: createMoreMenuButtons()
             )
         }
     }
@@ -728,6 +702,41 @@ struct VoiceMemoDetailView: View {
         if success {
             onMemoUpdated?()
         }
+    }
+    
+    // MARK: - メニュー作成
+    
+    private func createMoreMenuButtons() -> [ActionSheet.Button] {
+        var buttons: [ActionSheet.Button] = []
+        
+        // 編集ボタン
+        buttons.append(.default(Text(isEditing ? "💾 保存" : "📝 編集")) {
+            toggleEditing()
+        })
+        
+        // 録音追加ボタン
+        if !isEditing {
+            buttons.append(.default(Text("🎤 録音を追加")) {
+                toggleAdditionalRecording()
+            })
+        }
+        
+        // フィラーワード除去ボタン（テキストがある場合のみ）
+        if !editedText.isEmpty && !isEditing {
+            buttons.append(.default(Text("✨ フィラーワード除去")) {
+                previewFillerWordRemoval()
+            })
+        }
+        
+        // 共有ボタン
+        buttons.append(.default(Text("📤 共有")) {
+            showingShareSheet = true
+        })
+        
+        // キャンセルボタン
+        buttons.append(.cancel(Text("キャンセル")))
+        
+        return buttons
     }
 }
 
