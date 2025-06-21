@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import ComposableArchitecture
 
 struct VoiceMemoListView: View {
     private var voiceMemoController: VoiceMemoControllerProtocol
@@ -97,7 +98,9 @@ struct VoiceMemoListView: View {
                     } else {
                         ForEach(sortedAndFilteredMemos, id: \.id) { memo in
                             NavigationLink(destination: VoiceMemoDetailView(
-                                memo: memo, 
+                                store: Store(initialState: VoiceMemoDetailFeature.State(memo: memo)) {
+                                    VoiceMemoDetailFeature()
+                                },
                                 admobKey: admobKey,
                                 onMemoUpdated: { refreshMemos() }
                             )) {
