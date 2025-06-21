@@ -7,7 +7,25 @@ import GoogleMobileAds
 @Reducer
 struct VoiceMemoDetailFeature {
   @ObservableState
-  struct State: Equatable {
+    struct State: Equatable {
+        static func == (lhs: VoiceMemoDetailFeature.State, rhs: VoiceMemoDetailFeature.State) -> Bool {
+            return lhs.memo.id == rhs.memo.id &&
+                   lhs.editedTitle == rhs.editedTitle &&
+                   lhs.editedText == rhs.editedText &&
+                   lhs.transcription == rhs.transcription &&
+                   lhs.isTranscribing == rhs.isTranscribing &&
+                   lhs.isPlaying == rhs.isPlaying &&
+                   lhs.isEditing == rhs.isEditing &&
+                   lhs.showingShareSheet == rhs.showingShareSheet &&
+                   lhs.showingSaveAlert == rhs.showingSaveAlert &&
+                   lhs.showingFillerWordPreview == rhs.showingFillerWordPreview &&
+                   lhs.showingSearchReplace == rhs.showingSearchReplace &&
+                   lhs.showingMoreMenu == rhs.showingMoreMenu &&
+                   lhs.backgroundTranscriptionState == rhs.backgroundTranscriptionState &&
+                   lhs.backgroundProgress == rhs.backgroundProgress &&
+                   lhs.additionalRecorderState == rhs.additionalRecorderState
+        }
+        
     var memo: VoiceMemo
     var editedTitle: String
     var editedText: String
@@ -109,9 +127,9 @@ struct VoiceMemoDetailFeature {
       case let .view(viewAction):
         switch viewAction {
         case .onAppear:
-          return .run { send in
+          return .run { [memoId = state.memo.id, memo = state.memo] send in
             // Load interstitial ad and refresh memo
-            await send(.memoUpdated(voiceMemoController.fetchVoiceMemo(id: state.memo.id) ?? state.memo))
+            await send(.memoUpdated(voiceMemoController.fetchVoiceMemo(id: memoId) ?? memo))
           }
           
         case .onDisappear:
@@ -200,11 +218,11 @@ struct VoiceMemoDetailFeature {
           }
           
         case .applyFillerWordRemoval:
-          return .run { [memoId = state.memo.id] send in
+          return .run { [memoId = state.memo.id, memo = state.memo] send in
             if let result = voiceMemoController.removeFillerWordsFromMemo(memoId: memoId),
                result.hasChanges {
               let updatedMemo = voiceMemoController.fetchVoiceMemo(id: memoId)
-              await send(.memoUpdated(updatedMemo ?? state.memo))
+              await send(.memoUpdated(updatedMemo ?? memo))
             }
           }
           
@@ -316,7 +334,7 @@ extension DependencyValues {
 // MARK: - View
 @ViewAction(for: VoiceMemoDetailFeature.self)
 struct VoiceMemoDetailView: View {
-  @Perception.Bindable var store: StoreOf<VoiceMemoDetailFeature>
+  @Bindable var store: StoreOf<VoiceMemoDetailFeature>
   private let admobKey: String
   private let onMemoUpdated: (() -> Void)?
   
