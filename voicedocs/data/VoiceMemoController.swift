@@ -43,6 +43,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                 fatalError("Unable to load persistent stores: \(error)")
             }
         }
+        migrateExistingFilesToVoiceRecordingsDirectory()
     }
 
     func saveContext() {
@@ -314,8 +315,122 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
     // セグメントファイルパスを生成
     func generateSegmentFilePath(memoId: UUID, segmentIndex: Int) -> String {
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let voiceRecordingsPath = documentsPath.appendingPathComponent("VoiceRecordings")
+        
+        // ディレクトリが存在しない場合は作成
+        if !FileManager.default.fileExists(atPath: voiceRecordingsPath.path) {
+            try? FileManager.default.createDirectory(at: voiceRecordingsPath, withIntermediateDirectories: true, attributes: nil)
+        }
+        
         let segmentFileName = "\(memoId.uuidString)_segment\(segmentIndex).m4a"
-        return documentsPath.appendingPathComponent(segmentFileName).path
+        return voiceRecordingsPath.appendingPathComponent(segmentFileName).path
+    }
+    
+    // 既存のファイルをVoiceRecordingsディレクトリに移行
+    private func migrateExistingFilesToVoiceRecordingsDirectory() {
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let voiceRecordingsPath = documentsPath.appendingPathComponent("VoiceRecordings")
+        
+        // VoiceRecordingsディレクトリを作成
+        if !FileManager.default.fileExists(atPath: voiceRecordingsPath.path) {
+            try? FileManager.default.createDirectory(at: voiceRecordingsPath, withIntermediateDirectories: true, attributes: nil)
+        }
+        
+        // すべてのメモを取得
+        let memos = fetchVoiceMemos()
+        
+        for memo in memos {
+            // ファイルパスが存在し、まだ移行されていない場合
+            if !memo.filePath.isEmpty,
+               !memo.filePath.contains("VoiceRecordings") {
+                
+                let oldURL = URL(fileURLWithPath: memo.filePath)
+                let fileName = oldURL.lastPathComponent
+                let newURL = voiceRecordingsPath.appendingPathComponent(fileName)
+                
+                // ファイルが存在する場合のみ移動
+                if FileManager.default.fileExists(atPath: oldURL.path) {
+                    do {
+                        try FileManager.default.moveItem(at: oldURL, to: newURL)
+                        // Core Dataのパスを更新
+                        _ = updateVoiceMemoFilePath(id: memo.id, newPath: newURL.path)
+                    } catch {
+                        print("Failed to migrate file: \(error)")
+                    }
+                }
+            }
+            
+            // セグメントも移行
+            for segment in memo.segments {
+                if !segment.filePath.contains("VoiceRecordings") {
+                    let oldURL = URL(fileURLWithPath: segment.filePath)
+                    let fileName = oldURL.lastPathComponent
+                    let newURL = voiceRecordingsPath.appendingPathComponent(fileName)
+                    
+                    if FileManager.default.fileExists(atPath: oldURL.path) {
+                        do {
+                            try FileManager.default.moveItem(at: oldURL, to: newURL)
+                            // セグメントのパスを更新
+                            _ = updateSegmentFilePath(memoId: memo.id, segmentId: segment.id, newPath: newURL.path)
+                        } catch {
+                            print("Failed to migrate segment: \(error)")
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // ファイルパスを更新するヘルパーメソッド
+    private func updateVoiceMemoFilePath(id: UUID, newPath: String) -> Bool {
+        let context = container.viewContext
+        let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        
+        do {
+            let results = try context.fetch(fetchRequest)
+            if let memo = results.first {
+                memo.voiceFilePath = newPath
+                try context.save()
+                return true
+            }
+        } catch {
+            print("Failed to update file path: \(error)")
+        }
+        return false
+    }
+    
+    // セグメントファイルパスを更新するヘルパーメソッド
+    private func updateSegmentFilePath(memoId: UUID, segmentId: UUID, newPath: String) -> Bool {
+        let context = container.viewContext
+        let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", memoId as CVarArg)
+        
+        do {
+            let results = try context.fetch(fetchRequest)
+            if let memo = results.first,
+               let segmentsData = memo.segments,
+               var segments = try? JSONDecoder().decode([AudioSegment].self, from: segmentsData) {
+                
+                if let index = segments.firstIndex(where: { $0.id == segmentId }) {
+                    let oldSegment = segments[index]
+                    let updatedSegment = AudioSegment(
+                        id: oldSegment.id,
+                        filePath: newPath,
+                        startTime: oldSegment.startTime,
+                        duration: oldSegment.duration,
+                        createdAt: oldSegment.createdAt
+                    )
+                    segments[index] = updatedSegment
+                    memo.segments = try? JSONEncoder().encode(segments)
+                    try context.save()
+                    return true
+                }
+            }
+        } catch {
+            print("Failed to update segment path: \(error)")
+        }
+        return false
     }
     
     // MARK: - 文字起こし関連機能

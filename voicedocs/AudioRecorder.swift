@@ -166,11 +166,17 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     
     private func performStartRecording() {
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let voiceRecordingsPath = documentsPath.appendingPathComponent("VoiceRecordings")
+        
+        // ディレクトリが存在しない場合は作成
+        if !FileManager.default.fileExists(atPath: voiceRecordingsPath.path) {
+            try? FileManager.default.createDirectory(at: voiceRecordingsPath, withIntermediateDirectories: true, attributes: nil)
+        }
         
         let audioFilename: URL
         switch recordingMode {
         case .newRecording:
-            audioFilename = documentsPath.appendingPathComponent("\(UUID().uuidString).m4a")
+            audioFilename = voiceRecordingsPath.appendingPathComponent("\(UUID().uuidString).m4a")
         case .additionalRecording(let memoId):
             let segmentPath = voiceMemoController.generateSegmentFilePath(memoId: memoId, segmentIndex: segmentIndex)
             audioFilename = URL(fileURLWithPath: segmentPath)
