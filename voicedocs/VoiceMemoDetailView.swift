@@ -59,7 +59,6 @@ struct VoiceMemoDetailFeature {
   struct AdditionalRecorderState: Equatable {
     var isRecording = false
     var recordingDuration: TimeInterval = 0
-    var audioLevel: Float = 0
   }
   
   enum BackgroundTranscriptionState: Equatable {
@@ -184,12 +183,23 @@ struct VoiceMemoDetailFeature {
           
         case .toggleAdditionalRecording:
           if state.additionalRecorderState.isRecording {
+            state.additionalRecorderState.isRecording = false
             return .run { _ in
               audioRecorder.stopRecording()
             }
           } else {
-            return .run { [memoId = state.memo.id] _ in
+            state.additionalRecorderState.isRecording = true
+            return .run { [memoId = state.memo.id] send in
               audioRecorder.startAdditionalRecording(for: memoId)
+              
+              // 録音時間の監視を開始
+              while audioRecorder.isRecording {
+                try await clock.sleep(for: .milliseconds(100))
+                await send(.additionalRecorderStateChanged(AdditionalRecorderState(
+                  isRecording: audioRecorder.isRecording,
+                  recordingDuration: audioRecorder.recordingDuration
+                )))
+              }
             }
           }
           
@@ -657,26 +667,6 @@ struct VoiceMemoDetailView: View {
           Text("録音時間: \(formatTime(store.additionalRecorderState.recordingDuration))")
             .font(.subheadline)
             .foregroundColor(.secondary)
-          
-          // 音声レベル表示
-          VStack(alignment: .leading, spacing: 4) {
-            Text("音声レベル")
-              .font(.caption)
-              .foregroundColor(.secondary)
-            GeometryReader { geometry in
-              ZStack(alignment: .leading) {
-                Rectangle()
-                  .foregroundColor(.gray)
-                  .opacity(0.3)
-                Rectangle()
-                  .foregroundColor(store.additionalRecorderState.audioLevel > 0.8 ? .red : store.additionalRecorderState.audioLevel > 0.5 ? .orange : .green)
-                  .frame(width: CGFloat(store.additionalRecorderState.audioLevel) * geometry.size.width)
-                  .animation(.easeInOut(duration: 0.1), value: store.additionalRecorderState.audioLevel)
-              }
-              .cornerRadius(10)
-            }
-            .frame(height: 20)
-          }
           
           // 追加録音停止ボタン
           Button(action: { send(.toggleAdditionalRecording) }) {
