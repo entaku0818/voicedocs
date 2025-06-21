@@ -26,9 +26,12 @@ enum RecordingQuality: CaseIterable {
         case .high:
             return [
                 AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-                AVSampleRateKey: 44100,
+                AVSampleRateKey: 48000, // 最高サンプルレート
                 AVNumberOfChannelsKey: 1,
-                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+                AVEncoderAudioQualityKey: AVAudioQuality.max.rawValue, // 最高品質
+                AVEncoderBitRateKey: 128000, // 高ビットレート
+                AVLinearPCMBitDepthKey: 16, // 16ビット深度
+                AVAudioQualityKey: AVAudioQuality.max.rawValue
             ]
         }
     }
@@ -78,7 +81,18 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
         recordingSession = AVAudioSession.sharedInstance()
         
         do {
-            try recordingSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+            try recordingSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
+            
+            // マイクの感度を最大に設定
+            if recordingSession.isInputGainSettable {
+                try recordingSession.setInputGain(1.0) // 最大値 (0.0-1.0)
+            }
+            
+            // より広い周波数範囲をキャプチャするためのサンプルレート設定
+            try recordingSession.setPreferredSampleRate(48000.0) // 高品質サンプルレート
+            try recordingSession.setPreferredIOBufferDuration(0.005) // より短いバッファ（感度向上）
+            try recordingSession.setPreferredInputNumberOfChannels(1) // モノラル録音
+            
             try recordingSession.setActive(true)
         } catch {
             print("Failed to set up recording session: \(error)")
