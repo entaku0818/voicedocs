@@ -81,7 +81,7 @@ struct ContentView: View {
                 let fileSize = attributes[.size] as? Int64 ?? 0
                 AppLogger.fileOperation.info("File size: \(fileSize) bytes")
             } catch {
-                AppLogger.fileOperation.error("Failed to get file attributes", error: error)
+                AppLogger.fileOperation.error("Failed to get file attributes: \(error.localizedDescription)")
             }
         } else {
             AppLogger.fileOperation.error("Audio file does not exist at path: \(audioFileURL.path)")
@@ -106,7 +106,7 @@ struct ContentView: View {
             }
             
         } catch {
-            AppLogger.speechRecognition.error("Transcription failed", error: error)
+            AppLogger.speechRecognition.error("Transcription failed: \(error.localizedDescription)")
             await MainActor.run {
                 speechRecognitionManager.lastError = .recognitionFailed(error.localizedDescription)
                 

@@ -31,29 +31,3 @@ struct AppLogger {
     static let playback = Logger(subsystem: subsystem, category: "Playback")
 }
 
-// MARK: - Logger Extension for Convenience
-extension Logger {
-    /// デバッグレベルのログ（開発時のみ表示）
-    func debug(_ message: String) {
-        self.debug("\(message)")
-    }
-    
-    /// 情報レベルのログ
-    func info(_ message: String) {
-        self.info("\(message)")
-    }
-    
-    /// エラーレベルのログ
-    func error(_ message: String, error: Error? = nil) {
-        if let error = error {
-            self.error("\(message): \(error.localizedDescription)")
-        } else {
-            self.error("\(message)")
-        }
-    }
-    
-    /// 警告レベルのログ
-    func warning(_ message: String) {
-        self.warning("\(message)")
-    }
-}

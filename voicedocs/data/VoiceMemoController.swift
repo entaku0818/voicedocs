@@ -10,7 +10,7 @@ protocol VoiceMemoControllerProtocol {
     func saveVoiceMemo(id: UUID?, title: String, text: String, filePath: String?)
     func fetchVoiceMemos() -> [VoiceMemo]
     func fetchVoiceMemo(id: UUID) -> VoiceMemo?
-    func deleteVoiceMemo(id: UUID) -> Bool
+    func deleteVoiceMemo(id: UUID) async -> Bool
     func updateVoiceMemo(id: UUID, title: String?, text: String?) -> Bool
     func getFileSize(filePath: String) -> Int64?
     func getAudioDuration(filePath: String) -> TimeInterval?
@@ -37,8 +37,11 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
     static let shared = VoiceMemoController()
 
     let container: NSPersistentContainer
+    private let fileManagerClient: FileManagerClient
 
     init() {
+        // Live実装を直接使用（shared singletonパターンのため）
+        self.fileManagerClient = FileManagerClient.live
         container = NSPersistentContainer(name: "VoiceMemoModel")
         container.loadPersistentStores { description, error in
             if let error = error {
@@ -50,13 +53,12 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
     }
     
     // UUIDから音声ファイルパスを解決するヘルパーメソッド
-    private func getVoiceFilePath(for memoId: UUID) -> String {
-        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            return ""
+    private func getVoiceFilePath(for memoId: UUID) async -> String? {
+        guard let fileURL = await fileManagerClient.getFileURL(memoId, .recording) else {
+            AppLogger.fileOperation.warning("Could not get file URL for memo: \(memoId.uuidString)")
+            return nil
         }
-        let voiceRecordingsPath = documentsDirectory.appendingPathComponent("VoiceRecordings")
-        let filename = "recording-\(memoId.uuidString).m4a"
-        return voiceRecordingsPath.appendingPathComponent(filename).path
+        return fileURL.path
     }
 
     func saveContext() {
@@ -84,7 +86,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
         do {
             try context.save()
         } catch {
-            AppLogger.persistence.error("Failed to save voice memo", error: error)
+            AppLogger.persistence.error("Failed to save voice memo: \(error.localizedDescription)")
         }
     }
 
@@ -121,20 +123,20 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                         let segments = try JSONDecoder().decode([AudioSegment].self, from: segmentsData)
                         voiceMemo.segments = segments
                     } catch {
-                        AppLogger.persistence.error("Failed to decode segments", error: error)
+                        AppLogger.persistence.error("Failed to decode segments: \(error.localizedDescription)")
                     }
                 }
                 
                 return voiceMemo
             }
         } catch {
-            AppLogger.persistence.error("Failed to fetch voice memos", error: error)
+            AppLogger.persistence.error("Failed to fetch voice memos: \(error.localizedDescription)")
             return []
         }
     }
     
     // 音声メモの削除処理
-    func deleteVoiceMemo(id: UUID) -> Bool {
+    func deleteVoiceMemo(id: UUID) async -> Bool {
         let context = container.viewContext
         let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
@@ -148,15 +150,19 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             
             // 音声ファイルも削除（UUIDから解決）
             if let memoId = voiceMemo.id {
-                let filePath = getVoiceFilePath(for: memoId)
-                _ = deleteAudioFile(filePath: filePath)
+                if let filePath = await getVoiceFilePath(for: memoId) {
+                    _ = deleteAudioFile(filePath: filePath)
+                } else {
+                    // UUID-basedの新しい削除メソッドを使用
+                    _ = await deleteAudioFileById(memoId)
+                }
             }
             
             context.delete(voiceMemo)
             try context.save()
             return true
         } catch {
-            AppLogger.persistence.error("Failed to delete voice memo", error: error)
+            AppLogger.persistence.error("Failed to delete voice memo: \(error.localizedDescription)")
             return false
         }
     }
@@ -184,13 +190,14 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             try context.save()
             return true
         } catch {
-            AppLogger.persistence.error("Failed to update voice memo", error: error)
+            AppLogger.persistence.error("Failed to update voice memo: \(error.localizedDescription)")
             return false
         }
     }
     
     // ファイルサイズの取得
     func getFileSize(filePath: String) -> Int64? {
+        // レガシーサポート - 新しい実装ではUUID-basedのgetFileSizeByIdを使用
         guard !filePath.isEmpty else { return nil }
         
         let fileURL = URL(fileURLWithPath: filePath)
@@ -199,13 +206,19 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             let attributes = try FileManager.default.attributesOfItem(atPath: filePath)
             return attributes[.size] as? Int64
         } catch {
-            AppLogger.fileOperation.error("Failed to get file size", error: error)
+            AppLogger.fileOperation.error("Failed to get file size: \(error.localizedDescription)")
             return nil
         }
     }
     
+    // UUIDベースのファイルサイズ取得
+    func getFileSizeById(_ memoId: UUID) async -> Int64? {
+        return await fileManagerClient.getFileSize(memoId, .recording)
+    }
+    
     // 音声ファイルの再生時間取得
     func getAudioDuration(filePath: String) -> TimeInterval? {
+        // レガシーサポート - 新しい実装ではUUID-basedのgetAudioDurationByIdを使用
         guard !filePath.isEmpty else { return nil }
         
         let fileURL = URL(fileURLWithPath: filePath)
@@ -215,20 +228,52 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             let duration = Double(audioFile.length) / audioFile.processingFormat.sampleRate
             return duration
         } catch {
-            AppLogger.fileOperation.error("Failed to get audio duration", error: error)
+            AppLogger.fileOperation.error("Failed to get audio duration: \(error.localizedDescription)")
+            return nil
+        }
+    }
+    
+    // UUIDベースの音声ファイル再生時間取得
+    func getAudioDurationById(_ memoId: UUID) async -> TimeInterval? {
+        guard let fileURL = await fileManagerClient.getFileURL(memoId, .recording),
+              await fileManagerClient.fileExists(memoId, .recording) else {
+            AppLogger.fileOperation.warning("Audio file not found for memo: \(memoId.uuidString)")
+            return nil
+        }
+        
+        do {
+            let audioFile = try AVAudioFile(forReading: fileURL)
+            let duration = Double(audioFile.length) / audioFile.processingFormat.sampleRate
+            AppLogger.fileOperation.debug("Audio duration for \(memoId.uuidString): \(duration) seconds")
+            return duration
+        } catch {
+            AppLogger.fileOperation.error("Failed to get audio duration for \(memoId.uuidString): \(error.localizedDescription)")
             return nil
         }
     }
     
     // 音声ファイルの削除
     func deleteAudioFile(filePath: String) -> Bool {
+        // レガシーサポート - 新しい実装ではUUID-basedのdeleteAudioFileByIdを使用
         guard !filePath.isEmpty else { return false }
         
         do {
             try FileManager.default.removeItem(atPath: filePath)
             return true
         } catch {
-            AppLogger.fileOperation.error("Failed to delete audio file", error: error)
+            AppLogger.fileOperation.error("Failed to delete audio file: \(error.localizedDescription)")
+            return false
+        }
+    }
+    
+    // UUIDベースの音声ファイル削除
+    func deleteAudioFileById(_ memoId: UUID) async -> Bool {
+        do {
+            try await fileManagerClient.deleteFile(memoId, .recording)
+            AppLogger.fileOperation.info("Successfully deleted audio file for memo: \(memoId.uuidString)")
+            return true
+        } catch {
+            AppLogger.fileOperation.error("Failed to delete audio file for \(memoId.uuidString): \(error.localizedDescription)")
             return false
         }
     }
@@ -264,7 +309,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             try context.save()
             return true
         } catch {
-            AppLogger.persistence.error("Failed to add segment", error: error)
+            AppLogger.persistence.error("Failed to add segment: \(error.localizedDescription)")
             return false
         }
     }
@@ -298,7 +343,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             try context.save()
             return true
         } catch {
-            AppLogger.persistence.error("Failed to remove segment", error: error)
+            AppLogger.persistence.error("Failed to remove segment: \(error.localizedDescription)")
             return false
         }
     }
@@ -321,7 +366,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             
             return []
         } catch {
-            AppLogger.persistence.error("Failed to get segments", error: error)
+            AppLogger.persistence.error("Failed to get segments: \(error.localizedDescription)")
             return []
         }
     }
@@ -368,7 +413,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                 }
             }
         } catch {
-            AppLogger.persistence.error("Failed to update segment path", error: error)
+            AppLogger.persistence.error("Failed to update segment path: \(error.localizedDescription)")
         }
         return false
     }
@@ -403,7 +448,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             try context.save()
             return true
         } catch {
-            AppLogger.persistence.error("Failed to update transcription status", error: error)
+            AppLogger.persistence.error("Failed to update transcription status: \(error.localizedDescription)")
             return false
         }
     }
@@ -430,7 +475,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             try context.save()
             return true
         } catch {
-            AppLogger.persistence.error("Failed to update transcription result", error: error)
+            AppLogger.persistence.error("Failed to update transcription result: \(error.localizedDescription)")
             return false
         }
     }
@@ -455,7 +500,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             try context.save()
             return true
         } catch {
-            AppLogger.persistence.error("Failed to update transcription error", error: error)
+            AppLogger.persistence.error("Failed to update transcription error: \(error.localizedDescription)")
             return false
         }
     }
@@ -475,7 +520,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             
             return TranscriptionStatus(rawValue: statusString) ?? .none
         } catch {
-            AppLogger.persistence.error("Failed to get transcription status", error: error)
+            AppLogger.persistence.error("Failed to get transcription status: \(error.localizedDescription)")
             return .none
         }
     }
@@ -505,7 +550,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             
             return result
         } catch {
-            AppLogger.persistence.error("Failed to remove filler words", error: error)
+            AppLogger.persistence.error("Failed to remove filler words: \(error.localizedDescription)")
             return nil
         }
     }
@@ -526,7 +571,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             
             return FillerWordRemover.shared.removeFillerWords(from: originalText, languages: languages)
         } catch {
-            AppLogger.persistence.error("Failed to preview filler word removal", error: error)
+            AppLogger.persistence.error("Failed to preview filler word removal: \(error.localizedDescription)")
             return nil
         }
     }
@@ -565,13 +610,13 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                     let segments = try JSONDecoder().decode([AudioSegment].self, from: segmentsData)
                     voiceMemo.segments = segments
                 } catch {
-                    AppLogger.persistence.error("Failed to decode segments", error: error)
+                    AppLogger.persistence.error("Failed to decode segments: \(error.localizedDescription)")
                 }
             }
             
             return voiceMemo
         } catch {
-            AppLogger.persistence.error("Failed to fetch voice memo", error: error)
+            AppLogger.persistence.error("Failed to fetch voice memo: \(error.localizedDescription)")
             return nil
         }
     }

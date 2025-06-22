@@ -338,7 +338,7 @@ class BackgroundTranscriptionManager: NSObject, ObservableObject {
         do {
             try BGTaskScheduler.shared.submit(request)
         } catch {
-            AppLogger.speechRecognition.error("Could not schedule background transcription", error: error)
+            AppLogger.speechRecognition.error("Could not schedule background transcription: \(error.localizedDescription)")
         }
     }
 }

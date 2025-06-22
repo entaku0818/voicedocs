@@ -22,7 +22,9 @@
       "Bash(timeout 60 xcodebuild:*)",
       "Bash(git push:*)",
       "Bash(git checkout:*)",
-      "Bash(swift:*)"
+      "Bash(swift:*)",
+      "Bash(rg:*)",
+      "Bash(sed:*)"
     ],
     "deny": []
   }

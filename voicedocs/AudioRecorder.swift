@@ -59,6 +59,7 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     private var recordingMode: RecordingMode = .newRecording
     private var segmentIndex: Int = 0
     private let voiceMemoController = VoiceMemoController.shared
+    private let fileManagerClient = FileManagerClient.live
 
     @Published var isRecording: Bool = false
     @Published var recordingDuration: TimeInterval = 0
@@ -348,36 +349,33 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
             // 新しいメモとして保存
             let memoId = UUID()
             
-            // ファイルを正しい場所に移動（UUIDベースのファイル名）
-            let newFileName = "recording-\(memoId.uuidString).m4a"
-            let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            let voiceRecordingsPath = documentsDirectory.appendingPathComponent("VoiceRecordings")
-            let newFileURL = voiceRecordingsPath.appendingPathComponent(newFileName)
-            
-            do {
-                // 既存のファイルがあれば削除
-                if FileManager.default.fileExists(atPath: newFileURL.path) {
-                    try FileManager.default.removeItem(at: newFileURL)
+            Task {
+                do {
+                    // FileManagerClientを使用してファイルを移動
+                    let newFileURL = try await fileManagerClient.moveFile(url, memoId, .recording)
+                    
+                    await MainActor.run {
+                        // 移動後の新しいファイルURLを保存（文字起こし用）
+                        lastRecordedFileURL = newFileURL
+                        
+                        voiceMemoController.saveVoiceMemo(
+                            id: memoId, // 同じUUIDを使用
+                            title: "録音 \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))",
+                            text: "", // 音声認識結果は別途設定
+                            filePath: nil // filePathは使用しない
+                        )
+                        
+                        // 保存されたメモのIDを記録（文字起こし用）
+                        lastRecordedMemoId = memoId
+                    }
+                } catch {
+                    AppLogger.fileOperation.error("Failed to move recording file using FileManagerClient: \(error.localizedDescription)")
+                    await MainActor.run {
+                        lastRecordedFileURL = nil
+                        lastRecordedMemoId = nil
+                    }
                 }
-                // ファイルを移動
-                try FileManager.default.moveItem(at: url, to: newFileURL)
-                
-                // 移動後の新しいファイルURLを保存（文字起こし用）
-                lastRecordedFileURL = newFileURL
-            } catch {
-                AppLogger.fileOperation.error("Failed to move recording file", error: error)
-                return
             }
-            
-            voiceMemoController.saveVoiceMemo(
-                id: memoId, // 同じUUIDを使用
-                title: "録音 \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))",
-                text: "", // 音声認識結果は別途設定
-                filePath: nil // filePathは使用しない
-            )
-            
-            // 保存されたメモのIDを記録（文字起こし用）
-            lastRecordedMemoId = memoId
 
         case .additionalRecording(let memoId):
             // セグメントとして追加

@@ -200,7 +200,7 @@ class FillerWordRemover {
             
             return (result, removedWords.reversed())
         } catch {
-            AppLogger.ui.error("Regex error", error: error)
+            AppLogger.ui.error("Regex error: \(error.localizedDescription)")
             return (text, [])
         }
     }
@@ -238,7 +238,7 @@ class FillerWordRemover {
                 return nil
             }
         } catch {
-            AppLogger.ui.error("Regex error", error: error)
+            AppLogger.ui.error("Regex error: \(error.localizedDescription)")
             return []
         }
     }

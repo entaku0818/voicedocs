@@ -28,8 +28,8 @@ class FakeVoiceMemoController: VoiceMemoControllerProtocol {
         voiceMemos.append(memo3)
     }
 
-    func saveVoiceMemo(title: String, text: String, filePath: String?) {
-        var newMemo = VoiceMemo(id: UUID(), title: title, text: text, date: Date())
+    func saveVoiceMemo(id: UUID? = nil, title: String, text: String, filePath: String?) {
+        var newMemo = VoiceMemo(id: id ?? UUID(), title: title, text: text, date: Date())
         newMemo.transcriptionStatus = text.isEmpty ? .none : .completed
         newMemo.transcriptionQuality = text.isEmpty ? 0.0 : 0.8
         newMemo.transcribedAt = text.isEmpty ? nil : Date()
@@ -44,7 +44,7 @@ class FakeVoiceMemoController: VoiceMemoControllerProtocol {
         return voiceMemos.first(where: { $0.id == id })
     }
     
-    func deleteVoiceMemo(id: UUID) -> Bool {
+    func deleteVoiceMemo(id: UUID) async -> Bool {
         if let index = voiceMemos.firstIndex(where: { $0.id == id }) {
             voiceMemos.remove(at: index)
             return true

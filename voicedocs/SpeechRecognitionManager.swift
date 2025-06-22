@@ -136,7 +136,7 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
                 throw SpeechRecognitionError.recognitionFailed("Audio file is empty")
             }
         } catch {
-            AppLogger.speechRecognition.error("Failed to access file", error: error)
+            AppLogger.speechRecognition.error("Failed to access file: \(error.localizedDescription)")
             throw SpeechRecognitionError.recognitionFailed("Failed to access audio file")
         }
         
@@ -163,7 +163,7 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
             recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
                 DispatchQueue.main.async {
                     if let error = error {
-                        AppLogger.speechRecognition.error("Recognition error", error: error)
+                        AppLogger.speechRecognition.error("Recognition error: \(error.localizedDescription)")
                         self?.isTranscribing = false
                         self?.transcriptionProgress = ""
                         continuation.resume(throwing: SpeechRecognitionError.recognitionFailed(error.localizedDescription))
