@@ -44,7 +44,18 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                 fatalError("Unable to load persistent stores: \(error)")
             }
         }
-        migrateExistingFilesToVoiceRecordingsDirectory()
+        // マイグレーションは不要（voiceFilePathを使用しないため）
+        // migrateExistingFilesToVoiceRecordingsDirectory()
+    }
+    
+    // UUIDから音声ファイルパスを解決するヘルパーメソッド
+    private func getVoiceFilePath(for memoId: UUID) -> String {
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            return ""
+        }
+        let voiceRecordingsPath = documentsDirectory.appendingPathComponent("VoiceRecordings")
+        let filename = "recording-\(memoId.uuidString).m4a"
+        return voiceRecordingsPath.appendingPathComponent(filename).path
     }
 
     func saveContext() {
@@ -67,7 +78,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
         voiceMemo.title = title
         voiceMemo.text = text
         voiceMemo.createdAt = Date()
-        voiceMemo.voiceFilePath = filePath
+        // voiceFilePathは削除予定のため設定しない
 
         do {
             try context.save()
@@ -87,12 +98,12 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
         do {
             let voiceMemos = try context.fetch(fetchRequest)
             return voiceMemos.map { memo in
+                let memoId = memo.id ?? UUID()
                 var voiceMemo = VoiceMemo(
-                    id: memo.id ?? UUID(),
+                    id: memoId,
                     title: memo.title ?? "",
                     text: memo.text ?? "",
-                    date: memo.createdAt ?? Date(),
-                    filePath: memo.voiceFilePath ?? ""
+                    date: memo.createdAt ?? Date()
                 )
                 
                 // 文字起こし関連情報を復元
@@ -134,8 +145,9 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                 return false
             }
             
-            // 音声ファイルも削除
-            if let filePath = voiceMemo.voiceFilePath, !filePath.isEmpty {
+            // 音声ファイルも削除（UUIDから解決）
+            if let memoId = voiceMemo.id {
+                let filePath = getVoiceFilePath(for: memoId)
                 _ = deleteAudioFile(filePath: filePath)
             }
             
@@ -325,80 +337,6 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
         
         let segmentFileName = "\(memoId.uuidString)_segment\(segmentIndex).m4a"
         return voiceRecordingsPath.appendingPathComponent(segmentFileName).path
-    }
-    
-    // 既存のファイルをVoiceRecordingsディレクトリに移行
-    private func migrateExistingFilesToVoiceRecordingsDirectory() {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let voiceRecordingsPath = documentsPath.appendingPathComponent("VoiceRecordings")
-        
-        // VoiceRecordingsディレクトリを作成
-        if !FileManager.default.fileExists(atPath: voiceRecordingsPath.path) {
-            try? FileManager.default.createDirectory(at: voiceRecordingsPath, withIntermediateDirectories: true, attributes: nil)
-        }
-        
-        // すべてのメモを取得
-        let memos = fetchVoiceMemos()
-        
-        for memo in memos {
-            // ファイルパスが存在し、まだ移行されていない場合
-            if !memo.filePath.isEmpty,
-               !memo.filePath.contains("VoiceRecordings") {
-                
-                let oldURL = URL(fileURLWithPath: memo.filePath)
-                let fileName = oldURL.lastPathComponent
-                let newURL = voiceRecordingsPath.appendingPathComponent(fileName)
-                
-                // ファイルが存在する場合のみ移動
-                if FileManager.default.fileExists(atPath: oldURL.path) {
-                    do {
-                        try FileManager.default.moveItem(at: oldURL, to: newURL)
-                        // Core Dataのパスを更新
-                        _ = updateVoiceMemoFilePath(id: memo.id, newPath: newURL.path)
-                    } catch {
-                        print("Failed to migrate file: \(error)")
-                    }
-                }
-            }
-            
-            // セグメントも移行
-            for segment in memo.segments {
-                if !segment.filePath.contains("VoiceRecordings") {
-                    let oldURL = URL(fileURLWithPath: segment.filePath)
-                    let fileName = oldURL.lastPathComponent
-                    let newURL = voiceRecordingsPath.appendingPathComponent(fileName)
-                    
-                    if FileManager.default.fileExists(atPath: oldURL.path) {
-                        do {
-                            try FileManager.default.moveItem(at: oldURL, to: newURL)
-                            // セグメントのパスを更新
-                            _ = updateSegmentFilePath(memoId: memo.id, segmentId: segment.id, newPath: newURL.path)
-                        } catch {
-                            print("Failed to migrate segment: \(error)")
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    // ファイルパスを更新するヘルパーメソッド
-    private func updateVoiceMemoFilePath(id: UUID, newPath: String) -> Bool {
-        let context = container.viewContext
-        let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
-        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
-        
-        do {
-            let results = try context.fetch(fetchRequest)
-            if let memo = results.first {
-                memo.voiceFilePath = newPath
-                try context.save()
-                return true
-            }
-        } catch {
-            print("Failed to update file path: \(error)")
-        }
-        return false
     }
     
     // セグメントファイルパスを更新するヘルパーメソッド
@@ -604,12 +542,12 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                 return nil
             }
             
+            let memoId = memo.id ?? UUID()
             var voiceMemo = VoiceMemo(
-                id: memo.id ?? UUID(),
+                id: memoId,
                 title: memo.title ?? "",
                 text: memo.text ?? "",
-                date: memo.createdAt ?? Date(),
-                filePath: memo.voiceFilePath ?? ""
+                date: memo.createdAt ?? Date()
             )
             
             // 文字起こし関連情報を復元

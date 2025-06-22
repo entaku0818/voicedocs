@@ -140,9 +140,14 @@ struct VoiceMemoDetailFeature {
           
         case .togglePlayback:
           state.isPlaying.toggle()
-          return .run { [isPlaying = state.isPlaying, memo = state.memo] _ in
+          return .run { [isPlaying = state.isPlaying, memoId = state.memo.id] _ in
             if isPlaying {
-              await audioPlayerClient.startPlayback(memo.filePath)
+              // UUIDから音声ファイルパスを生成
+              let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+              let voiceRecordingsPath = documentsDirectory.appendingPathComponent("VoiceRecordings")
+              let filename = "recording-\(memoId.uuidString).m4a"
+              let filePath = voiceRecordingsPath.appendingPathComponent(filename).path
+              await audioPlayerClient.startPlayback(filePath)
             } else {
               await audioPlayerClient.stopPlayback()
             }
@@ -307,8 +312,17 @@ private func getAudioURL(for memo: VoiceMemo) -> URL {
     fatalError("Documents directory not found")
   }
   let voiceRecordingsPath = documentsDirectory.appendingPathComponent("VoiceRecordings")
-  let filePathComponent = (memo.filePath as NSString).lastPathComponent
-  return voiceRecordingsPath.appendingPathComponent(filePathComponent)
+  let filename = "recording-\(memo.id.uuidString).m4a"
+  return voiceRecordingsPath.appendingPathComponent(filename)
+}
+
+private func getFilePath(for memoId: UUID) -> String {
+  guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+    return ""
+  }
+  let voiceRecordingsPath = documentsDirectory.appendingPathComponent("VoiceRecordings")
+  let filename = "recording-\(memoId.uuidString).m4a"
+  return voiceRecordingsPath.appendingPathComponent(filename).path
 }
 
 // MARK: - Dependencies
@@ -434,7 +448,8 @@ struct VoiceMemoDetailView: View {
           Text(formatDate(store.memo.date))
         }
         
-        if let duration = getAudioDuration(filePath: store.memo.filePath) {
+        let filePath = getFilePath(for: store.memo.id)
+        if let duration = getAudioDuration(filePath: filePath) {
           HStack {
             Text("録音時間:")
               .foregroundColor(.secondary)
@@ -443,7 +458,7 @@ struct VoiceMemoDetailView: View {
           }
         }
         
-        if let fileSize = getFileSize(filePath: store.memo.filePath) {
+        if let fileSize = getFileSize(filePath: filePath) {
           HStack {
             Text("ファイルサイズ:")
               .foregroundColor(.secondary)
@@ -705,9 +720,10 @@ struct VoiceMemoDetailView: View {
     """
     items.append(textContent)
     
-    if !store.memo.filePath.isEmpty {
-      let fileURL = URL(fileURLWithPath: store.memo.filePath)
-      if FileManager.default.fileExists(atPath: store.memo.filePath) {
+    let filePath = getFilePath(for: store.memo.id)
+    if !filePath.isEmpty {
+      let fileURL = URL(fileURLWithPath: filePath)
+      if FileManager.default.fileExists(atPath: filePath) {
         items.append(fileURL)
       }
     }

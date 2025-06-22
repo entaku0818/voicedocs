@@ -181,7 +181,7 @@ struct VoiceMemoListView: View {
             memo.text.localizedCaseInsensitiveContains(searchText)
         }
         
-        return filtered.sorted { memo1, memo2 in
+        return filtered.sorted { (memo1: VoiceMemo, memo2: VoiceMemo) in
             switch sortOption {
             case .dateNewest:
                 return memo1.date > memo2.date
@@ -192,12 +192,20 @@ struct VoiceMemoListView: View {
             case .titleZA:
                 return memo1.title.localizedCompare(memo2.title) == .orderedDescending
             case .durationLongest:
-                let duration1 = voiceMemoController.getAudioDuration(filePath: memo1.filePath) ?? 0
-                let duration2 = voiceMemoController.getAudioDuration(filePath: memo2.filePath) ?? 0
+                let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+                let voiceRecordingsPath = documentsDirectory.appendingPathComponent("VoiceRecordings")
+                let filePath1 = voiceRecordingsPath.appendingPathComponent("recording-\(memo1.id.uuidString).m4a").path
+                let filePath2 = voiceRecordingsPath.appendingPathComponent("recording-\(memo2.id.uuidString).m4a").path
+                let duration1 = voiceMemoController.getAudioDuration(filePath: filePath1) ?? 0
+                let duration2 = voiceMemoController.getAudioDuration(filePath: filePath2) ?? 0
                 return duration1 > duration2
             case .durationShortest:
-                let duration1 = voiceMemoController.getAudioDuration(filePath: memo1.filePath) ?? 0
-                let duration2 = voiceMemoController.getAudioDuration(filePath: memo2.filePath) ?? 0
+                let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+                let voiceRecordingsPath = documentsDirectory.appendingPathComponent("VoiceRecordings")
+                let filePath1 = voiceRecordingsPath.appendingPathComponent("recording-\(memo1.id.uuidString).m4a").path
+                let filePath2 = voiceRecordingsPath.appendingPathComponent("recording-\(memo2.id.uuidString).m4a").path
+                let duration1 = voiceMemoController.getAudioDuration(filePath: filePath1) ?? 0
+                let duration2 = voiceMemoController.getAudioDuration(filePath: filePath2) ?? 0
                 return duration1 < duration2
             }
         }
@@ -225,14 +233,6 @@ struct VoiceMemoListView: View {
         \(memo.text)
         """
         items.append(textContent)
-        
-        // 音声ファイル
-        if !memo.filePath.isEmpty {
-            let fileURL = URL(fileURLWithPath: memo.filePath)
-            if FileManager.default.fileExists(atPath: memo.filePath) {
-                items.append(fileURL)
-            }
-        }
         
         shareItems = items
         showingShareSheet = true
@@ -271,7 +271,12 @@ struct VoiceMemoRow: View {
             }
             
             HStack {
-                if let duration = voiceMemoController.getAudioDuration(filePath: memo.filePath) {
+                // UUIDから音声ファイルパスを生成
+                let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+                let voiceRecordingsPath = documentsDirectory.appendingPathComponent("VoiceRecordings")
+                let filePath = voiceRecordingsPath.appendingPathComponent("recording-\(memo.id.uuidString).m4a").path
+                
+                if let duration = voiceMemoController.getAudioDuration(filePath: filePath) {
                     Label(formatDuration(duration), systemImage: "clock")
                         .font(.caption2)
                         .foregroundColor(.secondary)
@@ -279,7 +284,7 @@ struct VoiceMemoRow: View {
                 
                 Spacer()
                 
-                if let fileSize = voiceMemoController.getFileSize(filePath: memo.filePath) {
+                if let fileSize = voiceMemoController.getFileSize(filePath: filePath) {
                     Label(formatFileSize(fileSize), systemImage: "doc")
                         .font(.caption2)
                         .foregroundColor(.secondary)

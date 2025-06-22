@@ -54,20 +54,15 @@ enum SpeechRecognitionError: LocalizedError, Equatable {
 
 class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     private var speechRecognizer: SFSpeechRecognizer?
-    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
-    private let audioEngine = AVAudioEngine()
-    private var recognitionTimer: Timer?
-    private var segmentTimer: Timer?
-    private var currentSegmentText = ""
-    private var accumulatedText = ""
     
     @Published var transcribedText: String = ""
-    @Published var isRecognizing: Bool = false
+    @Published var isTranscribing: Bool = false
     @Published var currentLanguage: SpeechLanguage = .japanese
     @Published var recognitionQuality: Float = 0.0
     @Published var lastError: SpeechRecognitionError?
     @Published var isAvailable: Bool = false
+    @Published var transcriptionProgress: String = ""
 
     override init() {
         super.init()
@@ -88,7 +83,6 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
     }
 
     func changeLanguage(to language: SpeechLanguage) {
-        guard !isRecognizing else { return }
         
         currentLanguage = language
         setupSpeechRecognizer()
@@ -106,7 +100,8 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
         }
     }
     
-    func startSpeechRecognition() async throws {
+    // ファイルベースの文字起こし（新しいメイン機能）
+    func transcribeAudioFile(at url: URL) async throws -> String {
         // 権限確認
         guard await requestPermissions() else {
             throw SpeechRecognitionError.unauthorized
@@ -116,168 +111,112 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
             throw SpeechRecognitionError.unavailable
         }
         
-        // 既存の認識をクリーンアップ
-        await stopSpeechRecognition()
-        
-        // 音声セッション設定
-        let audioSession = AVAudioSession.sharedInstance()
-        do {
-            try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth])
-            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
-        } catch {
-            throw SpeechRecognitionError.configurationFailed
+        // ファイルの存在確認
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw SpeechRecognitionError.recognitionFailed("Audio file not found")
         }
         
-        await startRecognitionSegment()
+        // ファイルサイズ確認
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            let fileSize = attributes[.size] as? Int64 ?? 0
+            
+            if fileSize == 0 {
+                throw SpeechRecognitionError.recognitionFailed("Audio file is empty")
+            }
+        } catch {
+            throw SpeechRecognitionError.recognitionFailed("Failed to access audio file")
+        }
+        
+        await MainActor.run {
+            self.isTranscribing = true
+            self.transcriptionProgress = "音声ファイルを解析中..."
+            self.lastError = nil
+        }
+        
+        return try await performFileTranscription(url: url)
     }
     
-    private func startRecognitionSegment() async {
-        guard !isRecognizing else { return }
-        
-        // 新しい認識セグメントを開始
-        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-        guard let recognitionRequest = recognitionRequest else { return }
-        
-        recognitionRequest.shouldReportPartialResults = true
-        recognitionRequest.requiresOnDeviceRecognition = false
-        
-        // 音声認識タスクを作成
-        recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
-            DispatchQueue.main.async {
-                self?.processRecognitionResult(result: result, error: error)
-            }
-        }
-        
-        // 音声入力設定
-        let inputNode = audioEngine.inputNode
-        let recordingFormat = inputNode.outputFormat(forBus: 0)
-        
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, when in
-            self?.recognitionRequest?.append(buffer)
-        }
-        
-        // 音声エンジン開始
-        do {
-            audioEngine.prepare()
-            try audioEngine.start()
+    private func performFileTranscription(url: URL) async throws -> String {
+        return try await withCheckedThrowingContinuation { continuation in
+            let recognitionRequest = SFSpeechURLRecognitionRequest(url: url)
+            recognitionRequest.shouldReportPartialResults = false
+            recognitionRequest.requiresOnDeviceRecognition = false
             
-            await MainActor.run {
-                self.isRecognizing = true
-                self.lastError = nil
-                self.currentSegmentText = ""
-            }
-            
-            // 50秒後に自動的にセグメントを更新（1分制限対策）
-            segmentTimer = Timer.scheduledTimer(withTimeInterval: 50.0, repeats: false) { [weak self] _ in
-                Task {
-                    await self?.restartRecognitionSegment()
+            recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
+                DispatchQueue.main.async {
+                    if let error = error {
+                        self?.isTranscribing = false
+                        self?.transcriptionProgress = ""
+                        continuation.resume(throwing: SpeechRecognitionError.recognitionFailed(error.localizedDescription))
+                        return
+                    }
+                    
+                    if let result = result {
+                        let transcription = result.bestTranscription.formattedString
+                        
+                        // 認識品質を更新
+                        if let segment = result.bestTranscription.segments.last {
+                            self?.recognitionQuality = segment.confidence
+                        }
+                        
+                        // 進行状況を更新
+                        self?.transcriptionProgress = "文字起こし中: \(transcription.count)文字"
+                        
+                        if result.isFinal {
+                            self?.transcribedText = transcription
+                            self?.isTranscribing = false
+                            self?.transcriptionProgress = "文字起こし完了"
+                            continuation.resume(returning: transcription)
+                        }
+                    }
                 }
             }
             
-        } catch {
-            await MainActor.run {
-                self.lastError = .configurationFailed
+            if recognitionTask == nil {
+                DispatchQueue.main.async {
+                    self.isTranscribing = false
+                    self.transcriptionProgress = ""
+                }
+                continuation.resume(throwing: SpeechRecognitionError.configurationFailed)
             }
         }
     }
     
-    private func processRecognitionResult(result: SFSpeechRecognitionResult?, error: Error?) {
-        if let error = error {
-            self.lastError = .recognitionFailed(error.localizedDescription)
-            return
-        }
-        
-        guard let result = result else { return }
-        
-        // 現在のセグメントテキストを更新
-        currentSegmentText = result.bestTranscription.formattedString
-        
-        // 全体のテキストを更新
-        transcribedText = accumulatedText + currentSegmentText
-        
-        // 認識品質を更新
-        if let segment = result.bestTranscription.segments.last {
-            recognitionQuality = segment.confidence
-        }
-        
-        // 最終結果の場合、セグメントを確定
-        if result.isFinal {
-            accumulatedText += currentSegmentText
-            currentSegmentText = ""
-        }
+    // 文字起こし状態をリセット
+    func resetTranscription() {
+        transcribedText = ""
+        recognitionQuality = 0.0
+        transcriptionProgress = ""
+        lastError = nil
     }
     
-    private func restartRecognitionSegment() async {
-        guard isRecognizing else { return }
-        
-        // 現在のセグメントを確定
-        await MainActor.run {
-            accumulatedText += currentSegmentText
-            currentSegmentText = ""
-        }
-        
-        // 認識タスクを停止して新しいセグメントを開始
+    // 文字起こしをキャンセル
+    func cancelTranscription() {
         recognitionTask?.cancel()
         recognitionTask = nil
-        recognitionRequest?.endAudio()
-        recognitionRequest = nil
         
-        // 少し待ってから新しいセグメントを開始
-        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒
-        await startRecognitionSegment()
+        DispatchQueue.main.async {
+            self.isTranscribing = false
+            self.transcriptionProgress = "文字起こしがキャンセルされました"
+        }
     }
 
+    // 後方互換性のため残しておく（使用しない）
     func stopSpeechRecognition() async {
-        segmentTimer?.invalidate()
-        segmentTimer = nil
-        
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
-        recognitionRequest?.endAudio()
-        recognitionTask?.cancel()
-        
-        recognitionRequest = nil
-        recognitionTask = nil
-        
-        // 最終的なテキストを確定
-        await MainActor.run {
-            accumulatedText += currentSegmentText
-            transcribedText = accumulatedText
-            currentSegmentText = ""
-            isRecognizing = false
-        }
-        
-        // 音声セッションを非アクティブ化
-        do {
-            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        } catch {
-            print("Failed to deactivate audio session: \(error)")
-        }
+        cancelTranscription()
     }
     
     func clearTranscription() {
         transcribedText = ""
-        accumulatedText = ""
-        currentSegmentText = ""
+        recognitionQuality = 0.0
+        transcriptionProgress = ""
+        lastError = nil
     }
 
-    // 音声ファイルからの認識（録音済みファイル用）
+    // 後方互換性のため残しておく（transcribeAudioFileを使用することを推奨）
     func recognizeAudioFile(url: URL) async throws -> String {
-        let recognitionRequest = SFSpeechURLRecognitionRequest(url: url)
-        recognitionRequest.shouldReportPartialResults = false
-        
-        return try await withCheckedThrowingContinuation { continuation in
-            recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { result, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                
-                if let result = result, result.isFinal {
-                    continuation.resume(returning: result.bestTranscription.formattedString)
-                }
-            }
-        }
+        return try await transcribeAudioFile(at: url)
     }
 
     // MARK: - SFSpeechRecognizerDelegate
@@ -286,11 +225,9 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
         DispatchQueue.main.async {
             self.isAvailable = available && SFSpeechRecognizer.authorizationStatus() == .authorized
             
-            if !available && self.isRecognizing {
-                Task {
-                    await self.stopSpeechRecognition()
-                    self.lastError = .unavailable
-                }
+            if !available && self.isTranscribing {
+                self.cancelTranscription()
+                self.lastError = .unavailable
             }
         }
     }
@@ -302,7 +239,7 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
     }
     
     func isCurrentlyRecognizing() -> Bool {
-        return isRecognizing
+        return isTranscribing
     }
     
     func getCurrentLanguage() -> SpeechLanguage {

@@ -11,105 +11,16 @@ struct ContentView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-
         VStack(spacing: 20) {
-            // 設定エリア
-            VStack(spacing: 8) {
-
-                if !speechRecognitionManager.isAvailable {
-                    Text("音声認識が利用できません")
-                        .font(.caption)
-                        .foregroundColor(.red)
-                }
-            }
-            .padding(.horizontal)
-
-            // 音声認識結果表示
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("音声認識結果")
-                        .font(.headline)
-                    Spacer()
-                    if speechRecognitionManager.isRecognizing {
-                        HStack(spacing: 4) {
-                            ProgressView()
-                                .scaleEffect(0.7)
-                            Text("認識中...")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    if speechRecognitionManager.recognitionQuality > 0 {
-                        Text("精度: \(Int(speechRecognitionManager.recognitionQuality * 100))%")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                ScrollView {
-                    Text(speechRecognitionManager.transcribedText.isEmpty ? "録音を開始してください" : speechRecognitionManager.transcribedText)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                }
-                .frame(minHeight: 100, maxHeight: 200)
-                .background(Color(.systemGray6))
-                .cornerRadius(10)
-            }
-
-            // 録音時間表示（常に表示、録音中は更新）
-            VStack(spacing: 8) {
-                Text("録音時間: \(formatTime(audioRecorder.recordingDuration))")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(audioRecorder.isRecording ? .red : .secondary)
-
-                if audioRecorder.isRecording {
-                    Text("録音中...")
-                        .font(.caption)
-                        .foregroundColor(.red)
-                        .opacity(0.8)
-                }
-            }
-
-
-
-            // 録音ボタン
-            Button(action: {
-                Task {
-                    if audioRecorder.isRecording {
-                        // 録音停止
-                        audioRecorder.stopRecording()
-                        await speechRecognitionManager.stopSpeechRecognition()
-                        // 前のページに戻る
-                        dismiss()
-                    } else {
-                        // 録音開始
-                        do {
-                            audioRecorder.startRecording()
-                            try await speechRecognitionManager.startSpeechRecognition()
-                        } catch {
-                            print("Failed to start recording: \(error)")
-                            speechRecognitionManager.lastError = .configurationFailed
-                        }
-                    }
-                }
-            }) {
-                HStack {
-                    Image(systemName: audioRecorder.isRecording ? "stop.circle.fill" : "record.circle.fill")
-                        .font(.title)
-                    Text(audioRecorder.isRecording ? "録音停止" : "録音開始")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(audioRecorder.isRecording ? Color.red : Color.green)
-                .foregroundColor(.white)
-                .cornerRadius(12)
-                .scaleEffect(audioRecorder.isRecording ? 1.05 : 1.0)
-                .animation(.easeInOut(duration: 0.1), value: audioRecorder.isRecording)
-            }
-            .disabled(speechRecognitionManager.isRecognizing && !audioRecorder.isRecording)
+            StatusIndicatorView(speechRecognitionManager: speechRecognitionManager)
+            TranscriptionResultView(speechRecognitionManager: speechRecognitionManager)
+            RecordingTimeView(audioRecorder: audioRecorder, speechRecognitionManager: speechRecognitionManager)
+            RecordingButtonView(
+                audioRecorder: audioRecorder,
+                speechRecognitionManager: speechRecognitionManager,
+                onRecordingComplete: performTranscriptionAfterRecording,
+                onDismiss: { dismiss() }
+            )
             Spacer()
         }
         .padding()
@@ -124,7 +35,6 @@ struct ContentView: View {
             }
         }
         .navigationBarBackButtonHidden(audioRecorder.isRecording)
-
         .sheet(isPresented: $showingQualitySettings) {
             QualitySettingsView(audioRecorder: audioRecorder)
         }
@@ -138,7 +48,6 @@ struct ContentView: View {
             SettingsView(audioRecorder: audioRecorder, speechRecognitionManager: speechRecognitionManager)
         }
         .onChange(of: audioRecorder.isRecording) { isRecording in
-            // 録音中はシートを閉じる
             if isRecording {
                 showingQualitySettings = false
                 showingLanguageSettings = false
@@ -151,6 +60,132 @@ struct ContentView: View {
         }
     }
     
+    private func performTranscriptionAfterRecording() async {
+        guard let audioFileURL = audioRecorder.lastRecordedFileURL,
+              let memoId = audioRecorder.lastRecordedMemoId else {
+            return
+        }
+        
+        do {
+            // ファイルベースの文字起こしを実行
+            let transcription = try await speechRecognitionManager.transcribeAudioFile(at: audioFileURL)
+            
+            // 文字起こし結果をVoiceMemoControllerに保存
+            await MainActor.run {
+                _ = VoiceMemoController.shared.updateTranscriptionResult(
+                    memoId: memoId, 
+                    text: transcription, 
+                    quality: speechRecognitionManager.recognitionQuality
+                )
+            }
+            
+        } catch {
+            await MainActor.run {
+                speechRecognitionManager.lastError = .recognitionFailed(error.localizedDescription)
+                
+                // エラーをメモに記録
+                if let memoId = audioRecorder.lastRecordedMemoId {
+                    _ = VoiceMemoController.shared.updateTranscriptionError(
+                        memoId: memoId,
+                        error: error.localizedDescription
+                    )
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Sub Views
+
+struct StatusIndicatorView: View {
+    @ObservedObject var speechRecognitionManager: SpeechRecognitionManager
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            if !speechRecognitionManager.isAvailable {
+                Text("音声認識が利用できません")
+                    .font(.caption)
+                    .foregroundColor(.red)
+            }
+        }
+        .padding(.horizontal)
+    }
+}
+
+struct TranscriptionResultView: View {
+    @ObservedObject var speechRecognitionManager: SpeechRecognitionManager
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("音声認識結果")
+                    .font(.headline)
+                Spacer()
+                if speechRecognitionManager.isTranscribing {
+                    HStack(spacing: 4) {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                        Text("文字起こし中...")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                if speechRecognitionManager.recognitionQuality > 0 {
+                    Text("精度: \(Int(speechRecognitionManager.recognitionQuality * 100))%")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    if speechRecognitionManager.transcribedText.isEmpty {
+                        if speechRecognitionManager.isTranscribing {
+                            Text(speechRecognitionManager.transcriptionProgress)
+                                .foregroundColor(.blue)
+                        } else {
+                            Text("録音を開始してください")
+                                .foregroundColor(.secondary)
+                        }
+                    } else {
+                        Text(speechRecognitionManager.transcribedText)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+            }
+            .frame(minHeight: 100, maxHeight: 200)
+            .background(Color(.systemGray6))
+            .cornerRadius(10)
+        }
+    }
+}
+
+struct RecordingTimeView: View {
+    @ObservedObject var audioRecorder: AudioRecorder
+    @ObservedObject var speechRecognitionManager: SpeechRecognitionManager
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Text("録音時間: \(formatTime(audioRecorder.recordingDuration))")
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(audioRecorder.isRecording ? .red : .secondary)
+
+            if audioRecorder.isRecording {
+                Text("録音中...")
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .opacity(0.8)
+            } else if speechRecognitionManager.isTranscribing {
+                Text("文字起こし中...")
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                    .opacity(0.8)
+            }
+        }
+    }
+    
     private func formatTime(_ timeInterval: TimeInterval) -> String {
         let hours = Int(timeInterval) / 3600
         let minutes = Int(timeInterval) / 60 % 60
@@ -160,6 +195,54 @@ struct ContentView: View {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         } else {
             return String(format: "%02d:%02d", minutes, seconds)
+        }
+    }
+}
+
+struct RecordingButtonView: View {
+    @ObservedObject var audioRecorder: AudioRecorder
+    @ObservedObject var speechRecognitionManager: SpeechRecognitionManager
+    let onRecordingComplete: () async -> Void
+    let onDismiss: () -> Void
+    
+    var body: some View {
+        Button(action: {
+            Task {
+                if audioRecorder.isRecording {
+                    audioRecorder.stopRecording()
+                    await onRecordingComplete()
+                    onDismiss()
+                } else {
+                    speechRecognitionManager.resetTranscription()
+                    audioRecorder.startRecording()
+                }
+            }
+        }) {
+            HStack {
+                Image(systemName: audioRecorder.isRecording ? "stop.circle.fill" : "record.circle.fill")
+                    .font(.title)
+                Text(audioRecorder.isRecording ? "録音停止" : "録音開始")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+            }
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(buttonColor)
+            .foregroundColor(.white)
+            .cornerRadius(12)
+            .scaleEffect(audioRecorder.isRecording ? 1.05 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: audioRecorder.isRecording)
+        }
+        .disabled(speechRecognitionManager.isTranscribing && !audioRecorder.isRecording)
+    }
+    
+    private var buttonColor: Color {
+        if audioRecorder.isRecording {
+            return .red
+        } else if speechRecognitionManager.isTranscribing {
+            return .blue
+        } else {
+            return .green
         }
     }
 }

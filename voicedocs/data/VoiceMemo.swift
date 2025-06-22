@@ -12,7 +12,6 @@ struct VoiceMemo: Equatable {
     var title: String
     var text: String
     var date: Date
-    var filePath: String
     var segments: [AudioSegment] = []
     
     // 文字起こし関連プロパティ
@@ -28,9 +27,7 @@ struct VoiceMemo: Equatable {
     
     // セグメントを含むすべての音声ファイルパス
     var allAudioPaths: [String] {
-        var paths = [filePath]
-        paths.append(contentsOf: segments.map { $0.filePath })
-        return paths.filter { !$0.isEmpty }
+        return segments.map { $0.filePath }.filter { !$0.isEmpty }
     }
     
     // 次のセグメント開始時間
