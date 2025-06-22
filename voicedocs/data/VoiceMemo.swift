@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct VoiceMemo {
+struct VoiceMemo: Equatable {
     var id: UUID
     var title: String
     var text: String

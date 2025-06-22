@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct AudioSegment: Identifiable, Codable {
+struct AudioSegment: Identifiable, Codable, Equatable {
     let id: UUID
     let filePath: String
     let startTime: TimeInterval

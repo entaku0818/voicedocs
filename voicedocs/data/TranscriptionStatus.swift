@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum TranscriptionStatus: String, CaseIterable {
+enum TranscriptionStatus: String, CaseIterable, Equatable {
     case none = "none"           // 文字起こし未実行
     case inProgress = "inProgress" // 文字起こし中
     case completed = "completed"   // 文字起こし完了
