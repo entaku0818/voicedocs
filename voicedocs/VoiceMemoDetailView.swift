@@ -407,7 +407,7 @@ struct VoiceMemoDetailView: View {
     .alert("保存完了", isPresented: $store.showingSaveAlert) {
       Button("OK") { }
     } message: {
-      Text("メモが更新されました。")
+      Text("文字起こし結果が更新されました。")
     }
     .sheet(isPresented: $store.showingFillerWordPreview) {
       FillerWordPreviewView(
@@ -495,7 +495,7 @@ struct VoiceMemoDetailView: View {
   private func textEditingSection() -> some View {
     VStack(alignment: .leading, spacing: 8) {
       HStack {
-        Text("メモ")
+        Text("文字起こし結果")
           .font(.headline)
         
         Spacer()
@@ -518,7 +518,7 @@ struct VoiceMemoDetailView: View {
           .background(Color(.systemGray6))
           .cornerRadius(8)
       } else {
-        Text(store.editedText.isEmpty ? "メモなし" : store.editedText)
+        Text(store.editedText.isEmpty ? "文字起こし結果なし" : store.editedText)
           .padding()
           .frame(maxWidth: .infinity, alignment: .leading)
           .background(Color(.systemGray6))
@@ -712,7 +712,7 @@ struct VoiceMemoDetailView: View {
     タイトル: \(store.editedTitle)
     作成日時: \(formatDate(store.memo.date))
     
-    メモ:
+    文字起こし結果:
     \(store.editedText)
     
     文字起こし結果:
