@@ -3,10 +3,11 @@
 import Foundation
 import CoreData
 import AVFoundation
+import os.log
 
 
 protocol VoiceMemoControllerProtocol {
-    func saveVoiceMemo(title: String, text: String, filePath: String?)
+    func saveVoiceMemo(id: UUID?, title: String, text: String, filePath: String?)
     func fetchVoiceMemos() -> [VoiceMemo]
     func fetchVoiceMemo(id: UUID) -> VoiceMemo?
     func deleteVoiceMemo(id: UUID) -> Bool
@@ -71,10 +72,10 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
     }
 
     // 音声メモの保存処理
-    func saveVoiceMemo(title: String, text: String, filePath: String?) {
+    func saveVoiceMemo(id: UUID? = nil, title: String, text: String, filePath: String?) {
         let context = container.viewContext
         let voiceMemo = VoiceMemoModel(context: context)
-        voiceMemo.id = UUID()
+        voiceMemo.id = id ?? UUID() // 指定されたIDを使用、なければ新規生成
         voiceMemo.title = title
         voiceMemo.text = text
         voiceMemo.createdAt = Date()
@@ -83,7 +84,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
         do {
             try context.save()
         } catch {
-            print("Failed to save voice memo: \(error)")
+            AppLogger.persistence.error("Failed to save voice memo", error: error)
         }
     }
 
@@ -120,14 +121,14 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                         let segments = try JSONDecoder().decode([AudioSegment].self, from: segmentsData)
                         voiceMemo.segments = segments
                     } catch {
-                        print("Failed to decode segments: \(error)")
+                        AppLogger.persistence.error("Failed to decode segments", error: error)
                     }
                 }
                 
                 return voiceMemo
             }
         } catch {
-            print("Failed to fetch voice memos: \(error)")
+            AppLogger.persistence.error("Failed to fetch voice memos", error: error)
             return []
         }
     }
@@ -141,7 +142,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
         do {
             let voiceMemos = try context.fetch(fetchRequest)
             guard let voiceMemo = voiceMemos.first else {
-                print("Voice memo not found for deletion")
+                AppLogger.persistence.warning("Voice memo not found for deletion")
                 return false
             }
             
@@ -155,7 +156,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             try context.save()
             return true
         } catch {
-            print("Failed to delete voice memo: \(error)")
+            AppLogger.persistence.error("Failed to delete voice memo", error: error)
             return false
         }
     }
@@ -169,7 +170,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
         do {
             let voiceMemos = try context.fetch(fetchRequest)
             guard let voiceMemo = voiceMemos.first else {
-                print("Voice memo not found for update")
+                AppLogger.persistence.warning("Voice memo not found for update")
                 return false
             }
             
@@ -183,7 +184,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             try context.save()
             return true
         } catch {
-            print("Failed to update voice memo: \(error)")
+            AppLogger.persistence.error("Failed to update voice memo", error: error)
             return false
         }
     }
@@ -198,7 +199,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             let attributes = try FileManager.default.attributesOfItem(atPath: filePath)
             return attributes[.size] as? Int64
         } catch {
-            print("Failed to get file size: \(error)")
+            AppLogger.fileOperation.error("Failed to get file size", error: error)
             return nil
         }
     }
@@ -214,7 +215,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             let duration = Double(audioFile.length) / audioFile.processingFormat.sampleRate
             return duration
         } catch {
-            print("Failed to get audio duration: \(error)")
+            AppLogger.fileOperation.error("Failed to get audio duration", error: error)
             return nil
         }
     }
@@ -227,7 +228,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             try FileManager.default.removeItem(atPath: filePath)
             return true
         } catch {
-            print("Failed to delete audio file: \(error)")
+            AppLogger.fileOperation.error("Failed to delete audio file", error: error)
             return false
         }
     }
@@ -243,7 +244,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
         do {
             let voiceMemos = try context.fetch(fetchRequest)
             guard let voiceMemo = voiceMemos.first else {
-                print("Voice memo not found for adding segment")
+                AppLogger.persistence.warning("Voice memo not found for adding segment")
                 return false
             }
             
@@ -263,7 +264,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             try context.save()
             return true
         } catch {
-            print("Failed to add segment: \(error)")
+            AppLogger.persistence.error("Failed to add segment", error: error)
             return false
         }
     }
@@ -277,7 +278,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
         do {
             let voiceMemos = try context.fetch(fetchRequest)
             guard let voiceMemo = voiceMemos.first else {
-                print("Voice memo not found for removing segment")
+                AppLogger.persistence.warning("Voice memo not found for removing segment")
                 return false
             }
             
@@ -297,7 +298,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             try context.save()
             return true
         } catch {
-            print("Failed to remove segment: \(error)")
+            AppLogger.persistence.error("Failed to remove segment", error: error)
             return false
         }
     }
@@ -320,7 +321,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             
             return []
         } catch {
-            print("Failed to get segments: \(error)")
+            AppLogger.persistence.error("Failed to get segments", error: error)
             return []
         }
     }
@@ -367,7 +368,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                 }
             }
         } catch {
-            print("Failed to update segment path: \(error)")
+            AppLogger.persistence.error("Failed to update segment path", error: error)
         }
         return false
     }
@@ -383,7 +384,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
         do {
             let voiceMemos = try context.fetch(fetchRequest)
             guard let voiceMemo = voiceMemos.first else {
-                print("Voice memo not found for transcription status update")
+                AppLogger.persistence.warning("Voice memo not found for transcription status update")
                 return false
             }
             
@@ -402,7 +403,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             try context.save()
             return true
         } catch {
-            print("Failed to update transcription status: \(error)")
+            AppLogger.persistence.error("Failed to update transcription status", error: error)
             return false
         }
     }
@@ -416,7 +417,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
         do {
             let voiceMemos = try context.fetch(fetchRequest)
             guard let voiceMemo = voiceMemos.first else {
-                print("Voice memo not found for transcription result update")
+                AppLogger.persistence.warning("Voice memo not found for transcription result update")
                 return false
             }
             
@@ -429,7 +430,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             try context.save()
             return true
         } catch {
-            print("Failed to update transcription result: \(error)")
+            AppLogger.persistence.error("Failed to update transcription result", error: error)
             return false
         }
     }
@@ -443,7 +444,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
         do {
             let voiceMemos = try context.fetch(fetchRequest)
             guard let voiceMemo = voiceMemos.first else {
-                print("Voice memo not found for transcription error update")
+                AppLogger.persistence.warning("Voice memo not found for transcription error update")
                 return false
             }
             
@@ -454,7 +455,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             try context.save()
             return true
         } catch {
-            print("Failed to update transcription error: \(error)")
+            AppLogger.persistence.error("Failed to update transcription error", error: error)
             return false
         }
     }
@@ -474,7 +475,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             
             return TranscriptionStatus(rawValue: statusString) ?? .none
         } catch {
-            print("Failed to get transcription status: \(error)")
+            AppLogger.persistence.error("Failed to get transcription status", error: error)
             return .none
         }
     }
@@ -491,7 +492,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             let voiceMemos = try context.fetch(fetchRequest)
             guard let voiceMemo = voiceMemos.first,
                   let originalText = voiceMemo.text else {
-                print("Voice memo not found or has no text for filler word removal")
+                AppLogger.persistence.warning("Voice memo not found or has no text for filler word removal")
                 return nil
             }
             
@@ -504,7 +505,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             
             return result
         } catch {
-            print("Failed to remove filler words: \(error)")
+            AppLogger.persistence.error("Failed to remove filler words", error: error)
             return nil
         }
     }
@@ -519,13 +520,13 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             let voiceMemos = try context.fetch(fetchRequest)
             guard let voiceMemo = voiceMemos.first,
                   let originalText = voiceMemo.text else {
-                print("Voice memo not found or has no text for filler word preview")
+                AppLogger.persistence.warning("Voice memo not found or has no text for filler word preview")
                 return nil
             }
             
             return FillerWordRemover.shared.removeFillerWords(from: originalText, languages: languages)
         } catch {
-            print("Failed to preview filler word removal: \(error)")
+            AppLogger.persistence.error("Failed to preview filler word removal", error: error)
             return nil
         }
     }
@@ -564,13 +565,13 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                     let segments = try JSONDecoder().decode([AudioSegment].self, from: segmentsData)
                     voiceMemo.segments = segments
                 } catch {
-                    print("Failed to decode segments: \(error)")
+                    AppLogger.persistence.error("Failed to decode segments", error: error)
                 }
             }
             
             return voiceMemo
         } catch {
-            print("Failed to fetch voice memo: \(error)")
+            AppLogger.persistence.error("Failed to fetch voice memo", error: error)
             return nil
         }
     }

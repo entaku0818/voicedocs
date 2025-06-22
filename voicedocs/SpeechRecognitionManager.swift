@@ -8,6 +8,7 @@
 import Foundation
 import Speech
 import AVFoundation
+import os.log
 import Combine
 import UIKit
 
@@ -102,29 +103,40 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
     
     // ファイルベースの文字起こし（新しいメイン機能）
     func transcribeAudioFile(at url: URL) async throws -> String {
+        AppLogger.speechRecognition.debug("transcribeAudioFile called with URL: \(url.path)")
+        
         // 権限確認
         guard await requestPermissions() else {
+            AppLogger.speechRecognition.error("No permission")
             throw SpeechRecognitionError.unauthorized
         }
+        AppLogger.speechRecognition.debug("Permission granted")
         
         guard speechRecognizer?.isAvailable == true else {
+            AppLogger.speechRecognition.error("Recognizer not available")
             throw SpeechRecognitionError.unavailable
         }
+        AppLogger.speechRecognition.debug("Recognizer available")
         
         // ファイルの存在確認
         guard FileManager.default.fileExists(atPath: url.path) else {
+            AppLogger.speechRecognition.error("File not found at: \(url.path)")
             throw SpeechRecognitionError.recognitionFailed("Audio file not found")
         }
+        AppLogger.speechRecognition.debug("File exists")
         
         // ファイルサイズ確認
         do {
             let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
             let fileSize = attributes[.size] as? Int64 ?? 0
+            AppLogger.speechRecognition.info("File size: \(fileSize) bytes")
             
             if fileSize == 0 {
+                AppLogger.speechRecognition.error("File is empty")
                 throw SpeechRecognitionError.recognitionFailed("Audio file is empty")
             }
         } catch {
+            AppLogger.speechRecognition.error("Failed to access file", error: error)
             throw SpeechRecognitionError.recognitionFailed("Failed to access audio file")
         }
         
@@ -134,18 +146,24 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
             self.lastError = nil
         }
         
+        AppLogger.speechRecognition.info("Starting performFileTranscription...")
         return try await performFileTranscription(url: url)
     }
     
     private func performFileTranscription(url: URL) async throws -> String {
+        AppLogger.speechRecognition.debug("performFileTranscription called")
+        
         return try await withCheckedThrowingContinuation { continuation in
             let recognitionRequest = SFSpeechURLRecognitionRequest(url: url)
             recognitionRequest.shouldReportPartialResults = false
             recognitionRequest.requiresOnDeviceRecognition = false
             
+            AppLogger.speechRecognition.debug("Creating recognition task...")
+            
             recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
                 DispatchQueue.main.async {
                     if let error = error {
+                        AppLogger.speechRecognition.error("Recognition error", error: error)
                         self?.isTranscribing = false
                         self?.transcriptionProgress = ""
                         continuation.resume(throwing: SpeechRecognitionError.recognitionFailed(error.localizedDescription))
@@ -154,16 +172,19 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
                     
                     if let result = result {
                         let transcription = result.bestTranscription.formattedString
+                        AppLogger.speechRecognition.debug("Transcription progress: \(transcription.count) characters, isFinal: \(result.isFinal)")
                         
                         // 認識品質を更新
                         if let segment = result.bestTranscription.segments.last {
                             self?.recognitionQuality = segment.confidence
+                            AppLogger.speechRecognition.debug("Recognition quality: \(segment.confidence)")
                         }
                         
                         // 進行状況を更新
                         self?.transcriptionProgress = "文字起こし中: \(transcription.count)文字"
                         
                         if result.isFinal {
+                            AppLogger.speechRecognition.info("Transcription completed: \(transcription.prefix(100))...")
                             self?.transcribedText = transcription
                             self?.isTranscribing = false
                             self?.transcriptionProgress = "文字起こし完了"
@@ -174,11 +195,14 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
             }
             
             if recognitionTask == nil {
+                AppLogger.speechRecognition.error("Failed to create recognition task")
                 DispatchQueue.main.async {
                     self.isTranscribing = false
                     self.transcriptionProgress = ""
                 }
                 continuation.resume(throwing: SpeechRecognitionError.configurationFailed)
+            } else {
+                AppLogger.speechRecognition.debug("Recognition task created successfully")
             }
         }
     }

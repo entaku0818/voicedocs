@@ -8,6 +8,7 @@
 import Foundation
 import Speech
 import AVFoundation
+import os.log
 import BackgroundTasks
 import Combine
 import UIKit
@@ -337,7 +338,7 @@ class BackgroundTranscriptionManager: NSObject, ObservableObject {
         do {
             try BGTaskScheduler.shared.submit(request)
         } catch {
-            print("Could not schedule background transcription: \(error)")
+            AppLogger.speechRecognition.error("Could not schedule background transcription", error: error)
         }
     }
 }

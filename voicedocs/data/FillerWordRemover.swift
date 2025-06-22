@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import os.log
 
 enum FillerWordLanguage: String, CaseIterable {
     case japanese = "ja"
@@ -199,7 +200,7 @@ class FillerWordRemover {
             
             return (result, removedWords.reversed())
         } catch {
-            print("Regex error: \(error)")
+            AppLogger.ui.error("Regex error", error: error)
             return (text, [])
         }
     }
@@ -237,7 +238,7 @@ class FillerWordRemover {
                 return nil
             }
         } catch {
-            print("Regex error: \(error)")
+            AppLogger.ui.error("Regex error", error: error)
             return []
         }
     }

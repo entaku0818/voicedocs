@@ -1,4 +1,5 @@
 import SwiftUI
+import os.log
 
 struct ContentView: View {
     @StateObject private var audioRecorder = AudioRecorder()
@@ -61,34 +62,61 @@ struct ContentView: View {
     }
     
     private func performTranscriptionAfterRecording() async {
+        AppLogger.ui.debug("performTranscriptionAfterRecording called")
+        
         guard let audioFileURL = audioRecorder.lastRecordedFileURL,
               let memoId = audioRecorder.lastRecordedMemoId else {
+            AppLogger.ui.error("No recorded file URL or memo ID available - lastRecordedFileURL: \(audioRecorder.lastRecordedFileURL?.path ?? "nil"), lastRecordedMemoId: \(audioRecorder.lastRecordedMemoId?.uuidString ?? "nil")")
             return
         }
         
+        AppLogger.fileOperation.info("Audio file URL: \(audioFileURL.path)")
+        AppLogger.ui.info("Memo ID: \(memoId.uuidString)")
+        
+        // ファイルの存在を確認
+        if FileManager.default.fileExists(atPath: audioFileURL.path) {
+            AppLogger.fileOperation.debug("Audio file exists")
+            do {
+                let attributes = try FileManager.default.attributesOfItem(atPath: audioFileURL.path)
+                let fileSize = attributes[.size] as? Int64 ?? 0
+                AppLogger.fileOperation.info("File size: \(fileSize) bytes")
+            } catch {
+                AppLogger.fileOperation.error("Failed to get file attributes", error: error)
+            }
+        } else {
+            AppLogger.fileOperation.error("Audio file does not exist at path: \(audioFileURL.path)")
+        }
+        
         do {
+            AppLogger.speechRecognition.info("Starting transcription...")
             // ファイルベースの文字起こしを実行
             let transcription = try await speechRecognitionManager.transcribeAudioFile(at: audioFileURL)
             
+            AppLogger.speechRecognition.info("Transcription completed: \(transcription.prefix(50))...")
+            AppLogger.speechRecognition.debug("Transcription quality: \(speechRecognitionManager.recognitionQuality)")
+            
             // 文字起こし結果をVoiceMemoControllerに保存
             await MainActor.run {
-                _ = VoiceMemoController.shared.updateTranscriptionResult(
+                let success = VoiceMemoController.shared.updateTranscriptionResult(
                     memoId: memoId, 
                     text: transcription, 
                     quality: speechRecognitionManager.recognitionQuality
                 )
+                AppLogger.persistence.info("Save transcription result: \(success ? "Success" : "Failed")")
             }
             
         } catch {
+            AppLogger.speechRecognition.error("Transcription failed", error: error)
             await MainActor.run {
                 speechRecognitionManager.lastError = .recognitionFailed(error.localizedDescription)
                 
                 // エラーをメモに記録
                 if let memoId = audioRecorder.lastRecordedMemoId {
-                    _ = VoiceMemoController.shared.updateTranscriptionError(
+                    let success = VoiceMemoController.shared.updateTranscriptionError(
                         memoId: memoId,
                         error: error.localizedDescription
                     )
+                    AppLogger.persistence.info("Save error result: \(success ? "Success" : "Failed")")
                 }
             }
         }

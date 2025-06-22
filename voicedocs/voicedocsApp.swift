@@ -6,8 +6,8 @@
 //
 
 import SwiftUI
-import FirebaseCore
 import Firebase
+import os.log
 import GoogleMobileAds
 
 class AppDelegate: NSObject, UIApplicationDelegate {
@@ -17,13 +17,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
       GADMobileAds.sharedInstance().start(completionHandler: nil)
     #if DEBUG
       if FirebaseApp.app() != nil {
-          print("Firebase has been successfully configured.")
+          AppLogger.ui.info("Firebase has been successfully configured.")
       } else {
-          print("Firebase configuration failed.")
+          AppLogger.ui.error("Firebase configuration failed.")
       }
     Analytics.setAnalyticsCollectionEnabled(true)
     Analytics.setUserID("debug_user")
-    print("Firebase Analytics debug logging is enabled")
+    AppLogger.ui.debug("Firebase Analytics debug logging is enabled")
       Analytics.logEvent(AnalyticsEventAppOpen, parameters: nil)
     #endif
 

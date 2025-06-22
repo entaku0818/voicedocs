@@ -8,6 +8,7 @@ import Foundation
 import AVFoundation
 import Combine
 import UIKit
+import os.log
 
 enum RecordingQuality: CaseIterable {
     case standard
@@ -360,11 +361,16 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
                 }
                 // ファイルを移動
                 try FileManager.default.moveItem(at: url, to: newFileURL)
+                
+                // 移動後の新しいファイルURLを保存（文字起こし用）
+                lastRecordedFileURL = newFileURL
             } catch {
-                print("Failed to move recording file: \(error)")
+                AppLogger.fileOperation.error("Failed to move recording file", error: error)
+                return
             }
             
             voiceMemoController.saveVoiceMemo(
+                id: memoId, // 同じUUIDを使用
                 title: "録音 \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))",
                 text: "", // 音声認識結果は別途設定
                 filePath: nil // filePathは使用しない
