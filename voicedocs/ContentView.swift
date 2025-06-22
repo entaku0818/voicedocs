@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var showingError = false
     @State private var showingVoiceMemoList = false
     @State private var showingSettings = false
+    @State private var currentMemoId: UUID?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -19,8 +20,11 @@ struct ContentView: View {
             RecordingButtonView(
                 audioRecorder: audioRecorder,
                 speechRecognitionManager: speechRecognitionManager,
-                onRecordingComplete: performTranscriptionAfterRecording,
-                onDismiss: { dismiss() }
+                onRecordingComplete: { memoId, audioFileURL in
+                    await performTranscriptionAfterRecording(memoId: memoId, audioFileURL: audioFileURL)
+                },
+                onDismiss: { dismiss() },
+                currentMemoId: $currentMemoId
             )
             Spacer()
         }
@@ -61,15 +65,8 @@ struct ContentView: View {
         }
     }
     
-    private func performTranscriptionAfterRecording() async {
+    private func performTranscriptionAfterRecording(memoId: UUID, audioFileURL: URL) async {
         AppLogger.ui.debug("performTranscriptionAfterRecording called")
-        
-        guard let audioFileURL = audioRecorder.lastRecordedFileURL,
-              let memoId = audioRecorder.lastRecordedMemoId else {
-            AppLogger.ui.error("No recorded file URL or memo ID available - lastRecordedFileURL: \(audioRecorder.lastRecordedFileURL?.path ?? "nil"), lastRecordedMemoId: \(audioRecorder.lastRecordedMemoId?.uuidString ?? "nil")")
-            return
-        }
-        
         AppLogger.fileOperation.info("Audio file URL: \(audioFileURL.path)")
         AppLogger.ui.info("Memo ID: \(memoId.uuidString)")
         
@@ -111,13 +108,11 @@ struct ContentView: View {
                 speechRecognitionManager.lastError = .recognitionFailed(error.localizedDescription)
                 
                 // エラーをメモに記録
-                if let memoId = audioRecorder.lastRecordedMemoId {
-                    let success = VoiceMemoController.shared.updateTranscriptionError(
-                        memoId: memoId,
-                        error: error.localizedDescription
-                    )
-                    AppLogger.persistence.info("Save error result: \(success ? "Success" : "Failed")")
-                }
+                let success = VoiceMemoController.shared.updateTranscriptionError(
+                    memoId: memoId,
+                    error: error.localizedDescription
+                )
+                AppLogger.persistence.info("Save error result: \(success ? "Success" : "Failed")")
             }
         }
     }
@@ -259,18 +254,37 @@ struct RecordingTimeView: View {
 struct RecordingButtonView: View {
     @ObservedObject var audioRecorder: AudioRecorder
     @ObservedObject var speechRecognitionManager: SpeechRecognitionManager
-    let onRecordingComplete: () async -> Void
+    let onRecordingComplete: (UUID, URL) async -> Void
     let onDismiss: () -> Void
+    @Binding var currentMemoId: UUID?
     
     var body: some View {
         Button(action: {
             Task {
                 if audioRecorder.isRecording {
+                    // 録音停止処理
+                    guard let audioFileURL = audioRecorder.audioFileURL,
+                          let memoId = currentMemoId else {
+                        AppLogger.ui.error("No audio file URL or memo ID available for transcription")
+                        return
+                    }
+                    
                     audioRecorder.stopRecording()
-                    await onRecordingComplete()
+                    
+                    // ファイルの保存処理を実行
+                    if let finalFileURL = await audioRecorder.saveRecording(
+                        url: audioFileURL,
+                        duration: audioRecorder.recordingDuration,
+                        memoId: memoId
+                    ) {
+                        await onRecordingComplete(memoId, finalFileURL)
+                    }
+                    
                     onDismiss()
                 } else {
+                    // 録音開始処理
                     speechRecognitionManager.resetTranscription()
+                    currentMemoId = UUID() // 新しいUUIDを生成
                     audioRecorder.startRecording()
                 }
             }

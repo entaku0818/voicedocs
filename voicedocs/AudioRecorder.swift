@@ -52,7 +52,7 @@ enum RecordingMode {
 class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     private var audioRecorder: AVAudioRecorder?
     private var recordingSession: AVAudioSession!
-    private var audioFileURL: URL?
+    var audioFileURL: URL?
     private var recordingTimer: Timer?
     private var startTime: Date?
     private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
@@ -65,8 +65,6 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     @Published var recordingDuration: TimeInterval = 0
     @Published var audioLevel: Float = 0.0
     @Published var recordingQuality: RecordingQuality = .high
-    @Published var lastRecordedFileURL: URL?
-    @Published var lastRecordedMemoId: UUID?
 
     override init() {
         super.init()
@@ -286,26 +284,8 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
         isRecording = false
         endBackgroundTask()
 
-        // 録音完了時にコールバックを呼び出す
-        if let audioFileURL = audioFileURL {
-            // ファイルが実際に存在するか確認
-            if FileManager.default.fileExists(atPath: audioFileURL.path) {
-                do {
-                    let attributes = try FileManager.default.attributesOfItem(atPath: audioFileURL.path)
-                    let fileSize = attributes[.size] as? Int64 ?? 0
-
-                    if fileSize > 0 {
-                        // 録音したファイルのURLを保存
-                        lastRecordedFileURL = audioFileURL
-                        saveRecording(url: audioFileURL, duration: recordingDuration)
-                    } else {
-                        lastRecordedFileURL = nil
-                    }
-                } catch {
-                    // ファイル属性の取得に失敗した場合はスキップ
-                }
-            }
-        }
+        // 録音したファイルのURLをプロパティに保存（文字起こし用）
+        // この情報はContentViewから取得される
 
         // セッションを非アクティブ化
         do {
@@ -343,41 +323,34 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
         }
     }
 
-    private func saveRecording(url: URL, duration: TimeInterval) {
+    func saveRecording(url: URL, duration: TimeInterval, memoId: UUID) async -> URL? {
         switch recordingMode {
         case .newRecording:
             // 新しいメモとして保存
-            let memoId = UUID()
-            
-            Task {
-                do {
-                    // FileManagerClientを使用してファイルを移動
-                    let newFileURL = try await fileManagerClient.moveFile(url, memoId, .recording)
-                    
-                    await MainActor.run {
-                        // 移動後の新しいファイルURLを保存（文字起こし用）
-                        lastRecordedFileURL = newFileURL
-                        
-                        voiceMemoController.saveVoiceMemo(
-                            id: memoId, // 同じUUIDを使用
-                            title: "録音 \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))",
-                            text: "", // 音声認識結果は別途設定
-                            filePath: nil // filePathは使用しない
-                        )
-                        
-                        // 保存されたメモのIDを記録（文字起こし用）
-                        lastRecordedMemoId = memoId
-                    }
-                } catch {
-                    AppLogger.fileOperation.error("Failed to move recording file using FileManagerClient: \(error.localizedDescription)")
-                    await MainActor.run {
-                        lastRecordedFileURL = nil
-                        lastRecordedMemoId = nil
-                    }
+            do {
+                // FileManagerClientを使用してファイルを移動
+                let newFileURL = try await fileManagerClient.moveFile(url, memoId, .recording)
+                
+                await MainActor.run {
+                    voiceMemoController.saveVoiceMemo(
+                        id: memoId, // 渡されたUUIDを使用
+                        title: "録音 \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))",
+                        text: "", // 音声認識結果は別途設定
+                        filePath: nil // filePathは使用しない
+                    )
                 }
+                
+                // モードをリセット
+                recordingMode = .newRecording
+                segmentIndex = 0
+                
+                return newFileURL
+            } catch {
+                AppLogger.fileOperation.error("Failed to move recording file using FileManagerClient: \(error.localizedDescription)")
+                return nil
             }
 
-        case .additionalRecording(let memoId):
+        case .additionalRecording(let existingMemoId):
             // セグメントとして追加
             let segment = AudioSegment(
                 filePath: url.path,
@@ -385,13 +358,14 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
                 duration: duration
             )
 
-            _ = voiceMemoController.addSegmentToMemo(memoId: memoId, segment: segment)
-            lastRecordedMemoId = memoId
+            _ = voiceMemoController.addSegmentToMemo(memoId: existingMemoId, segment: segment)
+            
+            // モードをリセット
+            recordingMode = .newRecording
+            segmentIndex = 0
+            
+            return url
         }
-
-        // モードをリセット
-        recordingMode = .newRecording
-        segmentIndex = 0
     }
     
     private func getLatestMemoId() -> UUID? {
