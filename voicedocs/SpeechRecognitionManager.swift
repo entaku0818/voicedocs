@@ -69,6 +69,19 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
         super.init()
         setupSpeechRecognizer()
         checkAvailability()
+        
+        // 権限が未決定の場合は自動的にリクエスト
+        Task {
+            await requestPermissionsIfNeeded()
+        }
+    }
+    
+    private func requestPermissionsIfNeeded() async {
+        let currentStatus: SFSpeechRecognizerAuthorizationStatus = SFSpeechRecognizer.authorizationStatus()
+        if currentStatus == .notDetermined {
+            AppLogger.speechRecognition.info("Speech recognition permission not determined, requesting...")
+            _ = await requestPermissions()
+        }
     }
     
     private func setupSpeechRecognizer() {
@@ -77,9 +90,24 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
     }
     
     private func checkAvailability() {
+        let authStatus: SFSpeechRecognizerAuthorizationStatus = SFSpeechRecognizer.authorizationStatus()
+        let recognizerAvailable = speechRecognizer?.isAvailable == true
+        
+        AppLogger.speechRecognition.info("Speech recognition status check - Auth: \(authStatus.rawValue), Recognizer available: \(recognizerAvailable)")
+        
         DispatchQueue.main.async {
-            self.isAvailable = SFSpeechRecognizer.authorizationStatus() == .authorized &&
-                               self.speechRecognizer?.isAvailable == true
+            self.isAvailable = authStatus == .authorized && recognizerAvailable
+            
+            if !self.isAvailable {
+                if authStatus != .authorized {
+                    AppLogger.speechRecognition.warning("Speech recognition not authorized: \(authStatus.rawValue)")
+                    self.lastError = .unauthorized
+                }
+                if !recognizerAvailable {
+                    AppLogger.speechRecognition.warning("Speech recognizer not available for language: \(self.currentLanguage.rawValue)")
+                    self.lastError = .unavailable
+                }
+            }
         }
     }
 

@@ -131,9 +131,38 @@ struct StatusIndicatorView: View {
     var body: some View {
         VStack(spacing: 8) {
             if !speechRecognitionManager.isAvailable {
-                Text("音声認識が利用できません")
-                    .font(.caption)
-                    .foregroundColor(.red)
+                VStack(spacing: 8) {
+                    Text("音声認識が利用できません")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                    
+                    if let error = speechRecognitionManager.lastError {
+                        switch error {
+                        case .unauthorized:
+                            Button("音声認識を許可") {
+                                Task {
+                                    _ = await speechRecognitionManager.requestPermissions()
+                                }
+                            }
+                            .font(.caption)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                        case .unavailable:
+                            Text("お使いのデバイスでは音声認識がサポートされていません")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        default:
+                            Text(error.localizedDescription)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+                }
             }
         }
         .padding(.horizontal)
