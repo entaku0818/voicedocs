@@ -330,9 +330,6 @@ private enum VoiceMemoControllerKey: DependencyKey {
   static let liveValue = VoiceMemoController.shared
 }
 
-private enum BackgroundTranscriptionManagerKey: DependencyKey {
-  static let liveValue = BackgroundTranscriptionManager.shared
-}
 
 private enum AudioRecorderKey: DependencyKey {
   static let liveValue = AudioRecorder()
@@ -344,10 +341,6 @@ extension DependencyValues {
     set { self[VoiceMemoControllerKey.self] = newValue }
   }
   
-  var backgroundTranscriptionManager: BackgroundTranscriptionManager {
-    get { self[BackgroundTranscriptionManagerKey.self] }
-    set { self[BackgroundTranscriptionManagerKey.self] = newValue }
-  }
   
   var audioRecorder: AudioRecorder {
     get { self[AudioRecorderKey.self] }

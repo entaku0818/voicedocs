@@ -39,7 +39,7 @@ struct VoiceMemoListView: View {
                         HStack {
                             Image(systemName: "magnifyingglass")
                                 .foregroundColor(.secondary)
-                            TextField("メモを検索", text: $searchText)
+                            TextField("文字起こし結果を検索", text: $searchText)
                             if !searchText.isEmpty {
                                 Button(action: { searchText = "" }) {
                                     Image(systemName: "xmark.circle.fill")
@@ -84,7 +84,7 @@ struct VoiceMemoListView: View {
                             Image(systemName: "mic.slash")
                                 .font(.largeTitle)
                                 .foregroundColor(.secondary)
-                            Text("録音ファイルがありません")
+                            Text("文字起こし結果がありません")
                                 .font(.headline)
                                 .foregroundColor(.secondary)
                             Text("下のボタンで新しい録音を開始してください")
@@ -124,7 +124,7 @@ struct VoiceMemoListView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .principal) {
-                        Text("音声メモ")
+                        Text("文字起こし結果")
                             .font(.title2)
                             .fontWeight(.bold)
                     }
@@ -159,7 +159,7 @@ struct VoiceMemoListView: View {
             .onAppear {
                 refreshMemos()
             }
-            .alert("メモを削除", isPresented: $showingDeleteAlert) {
+            .alert("文字起こし結果を削除", isPresented: $showingDeleteAlert) {
                 Button("削除", role: .destructive) {
                     if let memo = memoToDelete {
                         deleteMemo(memo)
@@ -167,7 +167,7 @@ struct VoiceMemoListView: View {
                 }
                 Button("キャンセル", role: .cancel) { }
             } message: {
-                Text("このメモを削除しますか？この操作は取り消せません。")
+                Text("この文字起こし結果を削除しますか？この操作は取り消せません。")
             }
             .sheet(isPresented: $showingShareSheet) {
                 ShareSheet(items: shareItems)
@@ -225,7 +225,7 @@ struct VoiceMemoListView: View {
         タイトル: \(memo.title)
         作成日時: \(formatDate(memo.date))
         
-        メモ:
+        文字起こし結果:
         \(memo.text)
         """
         items.append(textContent)
