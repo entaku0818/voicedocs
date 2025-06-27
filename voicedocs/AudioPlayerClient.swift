@@ -7,6 +7,19 @@ struct AudioPlayerClient {
   var startPlayback: @Sendable (String) async -> Void
   var stopPlayback: @Sendable () async -> Void
   var isPlaying: @Sendable () async -> Bool
+  var getCurrentTime: @Sendable () async -> TimeInterval
+  var getDuration: @Sendable () async -> TimeInterval
+  var observePlaybackProgress: @Sendable () async -> AsyncStream<PlaybackProgress>
+}
+
+struct PlaybackProgress: Equatable {
+  let currentTime: TimeInterval
+  let duration: TimeInterval
+  
+  var progress: Double {
+    guard duration > 0 else { return 0 }
+    return currentTime / duration
+  }
 }
 
 // MARK: - Live Implementation
@@ -20,6 +33,15 @@ extension AudioPlayerClient {
     },
     isPlaying: {
       await AudioPlayerManager.shared.isPlaying
+    },
+    getCurrentTime: {
+      await AudioPlayerManager.shared.getCurrentTime()
+    },
+    getDuration: {
+      await AudioPlayerManager.shared.getDuration()
+    },
+    observePlaybackProgress: {
+      await AudioPlayerManager.shared.playbackProgressStream()
     }
   )
 }
@@ -29,7 +51,10 @@ extension AudioPlayerClient {
   static let test = Self(
     startPlayback: { _ in },
     stopPlayback: { },
-    isPlaying: { false }
+    isPlaying: { false },
+    getCurrentTime: { 0 },
+    getDuration: { 0 },
+    observePlaybackProgress: { AsyncStream { _ in } }
   )
 }
 
@@ -42,9 +67,30 @@ class AudioPlayerManager: ObservableObject {
   private var player: AVPlayer?
   private var playerItem: AVPlayerItem?
   private var timeObserver: Any?
+  nonisolated(unsafe) private var progressContinuation: AsyncStream<PlaybackProgress>.Continuation?
 
   var isPlaying: Bool {
     _isPlaying
+  }
+  
+  func getCurrentTime() -> TimeInterval {
+    guard let player = player else { return 0 }
+    return player.currentTime().seconds
+  }
+  
+  func getDuration() -> TimeInterval {
+    guard let item = playerItem else { return 0 }
+    return item.duration.seconds
+  }
+  
+  func playbackProgressStream() -> AsyncStream<PlaybackProgress> {
+    AsyncStream { continuation in
+      self.progressContinuation = continuation
+      
+      continuation.onTermination = { _ in
+        self.progressContinuation = nil
+      }
+    }
   }
 
   func startPlayback(filePath: String) async {
@@ -125,6 +171,10 @@ class AudioPlayerManager: ObservableObject {
     player = nil
     playerItem = nil
     _isPlaying = false
+    
+    // プログレスストリームを終了
+    progressContinuation?.finish()
+    progressContinuation = nil
 
     // NotificationCenterのオブザーバーを削除
     NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: nil)
@@ -142,13 +192,25 @@ class AudioPlayerManager: ObservableObject {
   }
 
   private func addPeriodicTimeObserver() {
-    let interval = CMTime(seconds: 0.5, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+    let interval = CMTime(seconds: 0.1, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
     timeObserver = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-      guard let self = self, let player = self.player else { return }
+      guard let self = self, let player = self.player, let item = self.playerItem else { return }
 
       // 再生状態を確認して異常を検出
       if player.rate == 0 && self._isPlaying {
         // 再生が予期せず停止した場合の処理
+      }
+      
+      // プログレス情報を送信
+      let currentTime = time.seconds
+      let duration = item.duration.seconds
+      
+      if currentTime.isFinite && duration.isFinite && duration > 0 {
+        let progress = PlaybackProgress(
+          currentTime: currentTime,
+          duration: duration
+        )
+        self.progressContinuation?.yield(progress)
       }
     }
   }

@@ -23,7 +23,8 @@ struct VoiceMemoDetailFeature {
                    lhs.showingMoreMenu == rhs.showingMoreMenu &&
                    lhs.backgroundTranscriptionState == rhs.backgroundTranscriptionState &&
                    lhs.backgroundProgress == rhs.backgroundProgress &&
-                   lhs.additionalRecorderState == rhs.additionalRecorderState
+                   lhs.additionalRecorderState == rhs.additionalRecorderState &&
+                   lhs.playbackProgress == rhs.playbackProgress
         }
         
     var memo: VoiceMemo
@@ -40,7 +41,7 @@ struct VoiceMemoDetailFeature {
     var showingMoreMenu = false
     var fillerWordResult: FillerWordRemovalResult?
     var backgroundTranscriptionState: BackgroundTranscriptionState = .idle
-    var backgroundProgress: TranscriptionProgress = TranscriptionProgress(
+    var backgroundProgress: CustomTranscriptionProgress = CustomTranscriptionProgress(
       currentSegment: 0,
       totalSegments: 0,
       processedDuration: 0,
@@ -48,6 +49,7 @@ struct VoiceMemoDetailFeature {
       transcribedText: ""
     )
     var additionalRecorderState: AdditionalRecorderState = AdditionalRecorderState()
+    var playbackProgress: PlaybackProgress? = nil
     
     init(memo: VoiceMemo) {
       self.memo = memo
@@ -80,15 +82,29 @@ struct VoiceMemoDetailFeature {
     }
   }
 
+  struct CustomTranscriptionProgress: Equatable {
+    let currentSegment: Int
+    let totalSegments: Int
+    let processedDuration: TimeInterval
+    let totalDuration: TimeInterval
+    let transcribedText: String
+    
+    var percentage: Double {
+      guard totalSegments > 0 else { return 0 }
+      return Double(currentSegment) / Double(totalSegments)
+    }
+  }
+
   enum Action: ViewAction, BindableAction {
     case binding(BindingAction<State>)
     case transcriptionCompleted(String)
     case transcriptionFailed(String)
     case backgroundTranscriptionStateChanged(BackgroundTranscriptionState)
-    case backgroundProgressUpdated(TranscriptionProgress)
+    case backgroundProgressUpdated(CustomTranscriptionProgress)
     case additionalRecorderStateChanged(AdditionalRecorderState)
     case fillerWordResultReceived(FillerWordRemovalResult?)
     case memoUpdated(VoiceMemo)
+    case playbackProgressUpdated(PlaybackProgress)
     case view(View)
 
     enum View {
@@ -111,7 +127,6 @@ struct VoiceMemoDetailFeature {
   }
 
   @Dependency(\.voiceMemoController) var voiceMemoController
-  @Dependency(\.backgroundTranscriptionManager) var backgroundTranscriptionManager
   @Dependency(\.audioRecorder) var audioRecorder
   @Dependency(\.audioPlayerClient) var audioPlayerClient
   @Dependency(\.continuousClock) var clock
@@ -140,15 +155,27 @@ struct VoiceMemoDetailFeature {
           
         case .togglePlayback:
           state.isPlaying.toggle()
-          return .run { [isPlaying = state.isPlaying, memoId = state.memo.id] _ in
-            if isPlaying {
+          if state.isPlaying {
+            return .run { [memoId = state.memo.id] send in
               // UUIDから音声ファイルパスを生成
               let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
               let voiceRecordingsPath = documentsDirectory.appendingPathComponent("VoiceRecordings")
               let filename = "recording-\(memoId.uuidString).m4a"
               let filePath = voiceRecordingsPath.appendingPathComponent(filename).path
+              
               await audioPlayerClient.startPlayback(filePath)
-            } else {
+              
+              // プログレスを監視
+              for await progress in await audioPlayerClient.observePlaybackProgress() {
+                await send(.playbackProgressUpdated(progress))
+              }
+              
+              // 再生が終了したら状態をリセット
+              await send(.playbackProgressUpdated(PlaybackProgress(currentTime: 0, duration: 0)))
+            }
+          } else {
+            state.playbackProgress = nil
+            return .run { _ in
               await audioPlayerClient.stopPlayback()
             }
           }
@@ -169,22 +196,16 @@ struct VoiceMemoDetailFeature {
           }
           
         case .startBackgroundTranscription:
-          return .run { [memo = state.memo] send in
-            await backgroundTranscriptionManager.startTranscription(
-              audioURL: getAudioURL(for: memo),
-              memoId: memo.id
-            )
-          }
+          // Background transcription functionality removed
+          return .none
           
         case .pauseBackgroundTranscription:
-          return .run { _ in
-            backgroundTranscriptionManager.pauseTranscription()
-          }
+          // Pause functionality removed
+          return .none
           
         case .resumeBackgroundTranscription:
-          return .run { _ in
-            await backgroundTranscriptionManager.resumeTranscription()
-          }
+          // Resume functionality removed
+          return .none
           
         case .toggleAdditionalRecording:
           if state.additionalRecorderState.isRecording {
@@ -290,6 +311,13 @@ struct VoiceMemoDetailFeature {
         
       case let .memoUpdated(memo):
         state.memo = memo
+        return .none
+        
+      case let .playbackProgressUpdated(progress):
+        state.playbackProgress = progress
+        if progress.currentTime == 0 && progress.duration == 0 {
+          state.isPlaying = false
+        }
         return .none
       }
     }
@@ -420,7 +448,7 @@ struct VoiceMemoDetailView: View {
     }
     .actionSheet(isPresented: $store.showingMoreMenu) {
       ActionSheet(
-        title: Text("その他の操作"),
+        title: Text("共有"),
         buttons: createMoreMenuButtons()
       )
     }
@@ -623,6 +651,48 @@ struct VoiceMemoDetailView: View {
   
   private func actionButtonsSection() -> some View {
     VStack(spacing: 12) {
+      // 再生中のプログレス表示
+      if store.isPlaying, let progress = store.playbackProgress {
+        VStack(spacing: 8) {
+          // 再生時間表示
+          HStack {
+            Text(formatTime(progress.currentTime))
+              .font(.caption)
+              .foregroundColor(.secondary)
+            Spacer()
+            Text(formatTime(progress.duration))
+              .font(.caption)
+              .foregroundColor(.secondary)
+          }
+          
+          // プログレスバー
+          ProgressView(value: progress.progress)
+            .progressViewStyle(LinearProgressViewStyle(tint: .green))
+            .frame(height: 4)
+          
+          // 再生中アニメーション
+          HStack(spacing: 4) {
+            ForEach(0..<5) { index in
+              RoundedRectangle(cornerRadius: 2)
+                .fill(Color.green)
+                .frame(width: 3, height: store.isPlaying ? 20 : 10)
+                .animation(
+                  store.isPlaying ?
+                    Animation.easeInOut(duration: 0.4)
+                      .repeatForever(autoreverses: true)
+                      .delay(Double(index) * 0.1) :
+                    .default,
+                  value: store.isPlaying
+                )
+            }
+          }
+          .frame(height: 20)
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+      }
+      
       // 再生・文字起こしボタン
       HStack(spacing: 12) {
         Button(action: { send(.togglePlayback) }) {
@@ -652,10 +722,10 @@ struct VoiceMemoDetailView: View {
       }
       
       // その他メニューボタン
-      Button(action: { send(.showMoreMenu) }) {
+      Button(action: { send(.shareButtonTapped) }) {
         HStack {
-          Image(systemName: "ellipsis.circle")
-          Text("その他の操作")
+          Image(systemName: "square.and.arrow.up")
+          Text("共有")
         }
         .frame(maxWidth: .infinity)
         .padding()
@@ -726,25 +796,6 @@ struct VoiceMemoDetailView: View {
   
   private func createMoreMenuButtons() -> [ActionSheet.Button] {
     var buttons: [ActionSheet.Button] = []
-    
-    // 編集ボタン
-    buttons.append(.default(Text(store.isEditing ? "💾 保存" : "📝 編集")) {
-      send(.toggleEditing)
-    })
-    
-    // 録音追加ボタン
-    if !store.isEditing {
-      buttons.append(.default(Text("🎤 録音を追加")) {
-        send(.toggleAdditionalRecording)
-      })
-    }
-    
-    // フィラーワード除去ボタン（テキストがある場合のみ）
-    if !store.editedText.isEmpty && !store.isEditing {
-      buttons.append(.default(Text("✨ フィラーワード除去")) {
-        send(.previewFillerWordRemoval)
-      })
-    }
     
     // 共有ボタン
     buttons.append(.default(Text("📤 共有")) {
