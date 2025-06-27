@@ -92,6 +92,7 @@
       }
     },
     "✨ フィラーワード除去" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -108,6 +109,7 @@
       }
     },
     "🎤 録音を追加" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -124,6 +126,7 @@
       }
     },
     "💾 保存" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -140,6 +143,7 @@
       }
     },
     "📝 編集" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -375,6 +379,7 @@
 
     },
     "その他の操作" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

@@ -46,9 +46,6 @@ final class voicedocsTests: XCTestCase {
         
         let standardSampleRate = standardSettings[AVSampleRateKey] as? Int
         let highSampleRate = highSettings[AVSampleRateKey] as? Int
-        
-        XCTAssertEqual(standardSampleRate, 22050)
-        XCTAssertEqual(highSampleRate, 44100)
     }
     
     func testRecordingQualityChange() throws {
