@@ -591,7 +591,10 @@ struct VoiceMemoDetailView: View {
         }
       }
       
-      // 文字起こし結果表示とボタン
+      // 文字起こし実行ボタン（常に上部に表示）
+      getCurrentModeButton()
+      
+      // 文字起こし結果表示とコピーボタン
       VStack(spacing: 8) {
         let transcriptionText = getCurrentTranscriptionText()
         let hasResult = !transcriptionText.contains("文字起こしを開始するには")
@@ -604,8 +607,22 @@ struct VoiceMemoDetailView: View {
           .cornerRadius(8)
           .foregroundColor(hasResult ? .primary : .secondary)
         
-        // ボタンを常に表示（何回でも実行可能）
-        getCurrentModeButton()
+        // コピーボタン（結果がある場合のみ表示）
+        if hasResult {
+          Button(action: {
+            UIPasteboard.general.string = transcriptionText
+          }) {
+            HStack {
+              Image(systemName: "doc.on.doc")
+              Text("文字起こし結果をコピー")
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color.gray)
+            .foregroundColor(.white)
+            .cornerRadius(8)
+          }
+        }
       }
     }
   }

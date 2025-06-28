@@ -194,7 +194,14 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
                         AppLogger.speechRecognition.error("Recognition error: \(error.localizedDescription)")
                         self?.isTranscribing = false
                         self?.transcriptionProgress = ""
-                        continuation.resume(throwing: SpeechRecognitionError.recognitionFailed(error.localizedDescription))
+                        
+                        // "No Speech detected"エラーの場合は成功として扱い、メッセージを返す
+                        if error.localizedDescription.contains("No speech detected") || 
+                           error.localizedDescription.contains("no speech detected") {
+                            continuation.resume(returning: "文字起こし結果がありませんでした")
+                        } else {
+                            continuation.resume(throwing: SpeechRecognitionError.recognitionFailed(error.localizedDescription))
+                        }
                         return
                     }
                     

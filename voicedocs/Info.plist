@@ -4,6 +4,8 @@
 <dict>
 	<key>ADMOB_KEY</key>
 	<string>$(ADMOB_KEY)</string>
+	<key>ADMOB_BANNER_KEY</key>
+	<string>$(ADMOB_BANNER_KEY)</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-3940256099942544~1458002511</string>
 	<key>NSMicrophoneUsageDescription</key>
