@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Initial Setup
+
+When starting a new Claude Code session with this repository, use the following command to skip file permission checks and enable full access:
+
+```bash
+claude --dangerously-skip-permissions
+```
+
+**⚠️ Security Note**: This flag bypasses Claude Code's default file permission safety checks. Only use this in trusted development environments where you need full repository access for iOS development tasks.
+
 ## Commands
 
 ### Building and Running
@@ -80,18 +90,41 @@ xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs 
 - Automatic memo saving upon recording completion
 - Error handling with `SpeechRecognitionError` enum (conforms to Equatable)
 
+**Transcription System (Dual Engine)**:
+The app features two separate transcription engines for different use cases:
+
+1. **Realtime Transcription** (録音中のリアルタイム文字起こし)
+   - Engine: Apple Speech Framework (`SFSpeechRecognizer`)
+   - Timing: During recording (real-time)
+   - Language: ja-JP (Japanese)
+   - Accuracy: Medium (optimized for real-time)
+   - Storage: `text` field in VoiceMemo
+   - Editable: Yes (user can edit in detail view)
+   - Location: Upper section in VoiceMemoDetailView
+
+2. **AI Transcription** (高精度AI文字起こし)
+   - Engine: WhisperKit (Apple's high-accuracy AI)
+   - Timing: Post-recording (manual button trigger)
+   - Language: ja (Japanese)
+   - Accuracy: High (batch processing)
+   - Storage: `aiTranscriptionText` field in VoiceMemo
+   - Editable: No (read-only display)
+   - Location: Lower section in VoiceMemoDetailView
+
 **Transcription Management**:
 - State tracking: none, inProgress, completed, failed
 - Quality metrics and confidence scoring
 - Error logging and recovery
 - Timestamp tracking for transcription events
+- Separate storage for realtime vs AI transcription results
 
 ### Core Data Model
 
 Single entity **VoiceMemoModel**:
 - `id`: UUID
 - `title`: String
-- `text`: String (transcription)
+- `text`: String (realtime transcription - editable)
+- `aiTranscriptionText`: String (AI transcription - read-only)
 - `createdAt`: Date
 - `voiceFilePath`: String (local file reference)
 - `transcriptionStatus`: String (none/inProgress/completed/failed)
@@ -156,3 +189,45 @@ afplay /System/Library/Sounds/Funk.aiff
 ```
 
 This provides audio feedback when work is completed.
+
+## Transcription Implementation Details
+
+### Dual Transcription Architecture
+
+VoiceDocs implements a sophisticated dual transcription system to provide both real-time feedback and high-accuracy results:
+
+#### Realtime Transcription Flow
+```
+🎤 Recording → SpeechRecognitionManager → SFSpeechRecognizer → text field
+```
+- **File**: `SpeechRecognitionManager.swift`
+- **Method**: `transcribeAudioFile(at:)` and `performFileTranscription(url:)`
+- **Trigger**: Automatically during recording
+- **Processing**: Real-time with partial results
+- **UI Update**: ContentView displays live transcription
+- **Storage**: Saved to `text` field in Core Data
+
+#### AI Transcription Flow
+```
+📱 Detail View Button → WhisperKit → aiTranscriptionText field
+```
+- **File**: `VoiceMemoDetailView.swift`
+- **Method**: `transcribeAudio(memo:)` helper function
+- **Trigger**: Manual button press in detail view
+- **Processing**: Batch processing of entire audio file
+- **UI Update**: Detail view shows result in AI transcription section
+- **Storage**: Saved to `aiTranscriptionText` field in Core Data
+
+#### Key Implementation Files
+1. **SpeechRecognitionManager.swift**: Realtime transcription engine
+2. **VoiceMemoDetailView.swift**: AI transcription trigger and UI
+3. **VoiceMemoController.swift**: Data persistence for both types
+4. **VoiceMemo.swift**: Data model with dual transcription fields
+
+#### Data Separation Strategy
+- **Realtime**: `text` field (editable, updated during recording)
+- **AI**: `aiTranscriptionText` field (read-only, high accuracy)
+- **UI**: Separate sections in detail view for clear distinction
+- **Storage**: Both saved independently in Core Data
+
+This architecture allows users to benefit from immediate feedback during recording while also having access to highly accurate transcription results when needed.
