@@ -4,6 +4,12 @@ import AVFoundation
 import WhisperKit
 import GoogleMobileAds
 
+enum TranscriptionDisplayMode: String, CaseIterable {
+  case realtime = "リアルタイム"
+  case apple = "Apple"
+  case ai = "AI"
+}
+
 @Reducer
 struct VoiceMemoDetailFeature {
   @ObservableState
@@ -16,12 +22,12 @@ struct VoiceMemoDetailFeature {
                    lhs.isTranscribing == rhs.isTranscribing &&
                    lhs.isAppleTranscribing == rhs.isAppleTranscribing &&
                    lhs.appleTranscription == rhs.appleTranscription &&
+                   lhs.currentTranscriptionDisplay == rhs.currentTranscriptionDisplay &&
+                   lhs.isEditingTitle == rhs.isEditingTitle &&
                    lhs.isPlaying == rhs.isPlaying &&
-                   lhs.isEditing == rhs.isEditing &&
                    lhs.showingShareSheet == rhs.showingShareSheet &&
                    lhs.showingSaveAlert == rhs.showingSaveAlert &&
                    lhs.showingFillerWordPreview == rhs.showingFillerWordPreview &&
-                   lhs.showingSearchReplace == rhs.showingSearchReplace &&
                    lhs.showingMoreMenu == rhs.showingMoreMenu &&
                    lhs.backgroundTranscriptionState == rhs.backgroundTranscriptionState &&
                    lhs.backgroundProgress == rhs.backgroundProgress &&
@@ -36,12 +42,12 @@ struct VoiceMemoDetailFeature {
     var isTranscribing = false
     var isAppleTranscribing = false
     var appleTranscription: String = "Apple文字起こしを開始するには、以下のボタンを押してください。"
+    var currentTranscriptionDisplay: TranscriptionDisplayMode = .realtime
+    var isEditingTitle = false
     var isPlaying = false
-    var isEditing = false
     var showingShareSheet = false
     var showingSaveAlert = false
     var showingFillerWordPreview = false
-    var showingSearchReplace = false
     var showingMoreMenu = false
     var fillerWordResult: FillerWordRemovalResult?
     var backgroundTranscriptionState: BackgroundTranscriptionState = .idle
@@ -126,13 +132,13 @@ struct VoiceMemoDetailFeature {
       case pauseBackgroundTranscription
       case resumeBackgroundTranscription
       case toggleAdditionalRecording
-      case toggleEditing
+      case changeTranscriptionDisplay(TranscriptionDisplayMode)
+      case toggleTitleEditing
+      case saveTitleChanges
       case showMoreMenu
       case shareButtonTapped
       case previewFillerWordRemoval
       case applyFillerWordRemoval
-      case showSearchReplace
-      case saveChanges
     }
   }
 
@@ -248,14 +254,32 @@ struct VoiceMemoDetailFeature {
             }
           }
           
-        case .toggleEditing:
-          if state.isEditing {
-            // Save changes
-            state.isEditing = false
-            return .send(.view(.saveChanges))
+        case let .changeTranscriptionDisplay(mode):
+          state.currentTranscriptionDisplay = mode
+          return .none
+          
+        case .toggleTitleEditing:
+          if state.isEditingTitle {
+            // 編集完了時は保存
+            state.isEditingTitle = false
+            return .send(.view(.saveTitleChanges))
           } else {
-            state.isEditing = true
+            state.isEditingTitle = true
             return .none
+          }
+          
+        case .saveTitleChanges:
+          return .run { [memo = state.memo, title = state.editedTitle] send in
+            let success = voiceMemoController.updateVoiceMemo(
+              id: memo.id,
+              title: title.isEmpty ? "無題" : title,
+              text: nil,  // タイトルのみ更新
+              aiTranscriptionText: nil
+            )
+            if success {
+              let updatedMemo = voiceMemoController.fetchVoiceMemo(id: memo.id)
+              await send(.memoUpdated(updatedMemo ?? memo))
+            }
           }
           
         case .showMoreMenu:
@@ -281,23 +305,6 @@ struct VoiceMemoDetailFeature {
             }
           }
           
-        case .showSearchReplace:
-          state.showingSearchReplace = true
-          return .none
-          
-        case .saveChanges:
-          return .run { [memo = state.memo, title = state.editedTitle, text = state.editedText] send in
-            let success = voiceMemoController.updateVoiceMemo(
-              id: memo.id,
-              title: title.isEmpty ? "無題" : title,
-              text: text,  // リアルタイム文字起こしのみ保存
-              aiTranscriptionText: nil  // AI文字起こしは変更しない
-            )
-            if success {
-              let updatedMemo = voiceMemoController.fetchVoiceMemo(id: memo.id)
-              await send(.memoUpdated(updatedMemo ?? memo))
-            }
-          }
         }
         
       case let .transcriptionCompleted(text):
@@ -456,22 +463,11 @@ struct VoiceMemoDetailView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
-        // タイトルを大きく中央に表示
-        Text(store.editedTitle)
-          .font(.largeTitle)
-          .fontWeight(.bold)
-          .frame(maxWidth: .infinity)
-          .multilineTextAlignment(.center)
-          .padding(.top)
+        // タイトルセクション
+        titleSection()
         
-        // リアルタイム文字起こし結果セクション
-        realtimeTranscriptionSection()
-        
-        // Apple文字起こし結果セクション
-        appleTranscriptionSection()
-        
-        // AI文字起こし結果セクション
-        aiTranscriptionSection()
+        // 統合文字起こし結果セクション
+        unifiedTranscriptionSection()
         
         // 追加録音セグメント表示
         if !store.memo.segments.isEmpty {
@@ -513,15 +509,6 @@ struct VoiceMemoDetailView: View {
         onCancel: { store.showingFillerWordPreview = false }
       )
     }
-    .sheet(isPresented: $store.showingSearchReplace) {
-      TextSearchReplaceView(
-        text: $store.editedText,
-        onDismiss: { store.showingSearchReplace = false },
-        onTextChanged: { newText in
-          store.editedText = newText
-        }
-      )
-    }
     .actionSheet(isPresented: $store.showingMoreMenu) {
       ActionSheet(
         title: Text("共有"),
@@ -535,112 +522,136 @@ struct VoiceMemoDetailView: View {
   
   // MARK: - View Components
   
-  
-  
-  private func realtimeTranscriptionSection() -> some View {
-    VStack(alignment: .leading, spacing: 8) {
+  private func titleSection() -> some View {
+    VStack(spacing: 8) {
       HStack {
-        Text("リアルタイム文字起こし（録音中の音声認識）")
-          .font(.headline)
-        
-        Spacer()
-        
-        // 編集モード時のツールバー
-        if store.isEditing {
-          HStack(spacing: 8) {
-            Button(action: { send(.showSearchReplace) }) {
-              Image(systemName: "magnifyingglass")
-            }
-          }
-          .font(.title2)
+        if store.isEditingTitle {
+          // 編集モード
+          TextField("タイトルを入力", text: $store.editedTitle)
+            .font(.largeTitle)
+            .fontWeight(.bold)
+            .multilineTextAlignment(.center)
+            .textFieldStyle(RoundedBorderTextFieldStyle())
+        } else {
+          // 表示モード
+          Text(store.editedTitle)
+            .font(.largeTitle)
+            .fontWeight(.bold)
+            .frame(maxWidth: .infinity)
+            .multilineTextAlignment(.center)
         }
         
         // 編集トグルボタン
-        Button(action: { send(.toggleEditing) }) {
-          Image(systemName: store.isEditing ? "checkmark.circle.fill" : "pencil.circle")
-            .foregroundColor(store.isEditing ? .green : .blue)
+        Button(action: { send(.toggleTitleEditing) }) {
+          Image(systemName: store.isEditingTitle ? "checkmark.circle.fill" : "pencil.circle")
+            .foregroundColor(store.isEditingTitle ? .green : .blue)
+            .font(.title2)
         }
-        .font(.title2)
-      }
-      
-      if store.isEditing {
-        TextEditor(text: $store.editedText)
-          .frame(minHeight: 100)
-          .padding(8)
-          .background(Color(.systemGray6))
-          .cornerRadius(8)
-      } else {
-        Text(store.editedText.isEmpty ? "文字起こし結果なし" : store.editedText)
-          .padding()
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .background(Color(.systemGray6))
-          .cornerRadius(8)
-          .foregroundColor(store.editedText.isEmpty ? .secondary : .primary)
       }
     }
+    .padding(.top)
   }
   
-  private func appleTranscriptionSection() -> some View {
+  private func unifiedTranscriptionSection() -> some View {
     VStack(alignment: .leading, spacing: 8) {
+      // セクションヘッダーと切替ボタン
       HStack {
-        Text("Apple文字起こし（SFSpeechRecognizer）")
+        Text("文字起こし結果")
           .font(.headline)
         
         Spacer()
         
-        Button(action: { send(.startAppleTranscription) }) {
-          HStack {
-            Image(systemName: "waveform")
-            Text(store.isAppleTranscribing ? "変換中..." : "Apple文字起こし")
+        // 表示切替セグメンテッドコントロール
+        Picker("表示切替", selection: Binding(
+          get: { store.currentTranscriptionDisplay },
+          set: { send(.changeTranscriptionDisplay($0)) }
+        )) {
+          ForEach(TranscriptionDisplayMode.allCases, id: \.self) { mode in
+            Text(mode.rawValue).tag(mode)
           }
-          .padding(.horizontal, 12)
-          .padding(.vertical, 6)
-          .background(store.isAppleTranscribing ? Color.gray : Color.orange)
-          .foregroundColor(.white)
-          .cornerRadius(8)
-          .font(.caption)
         }
-        .disabled(store.isAppleTranscribing)
+        .pickerStyle(SegmentedPickerStyle())
+        .frame(width: 200)
       }
       
-      Text(store.appleTranscription)
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.systemGray6))
-        .cornerRadius(8)
-        .foregroundColor(store.appleTranscription.contains("Apple文字起こしを開始するには") ? .secondary : .primary)
-    }
-  }
-  
-  private func aiTranscriptionSection() -> some View {
-    VStack(alignment: .leading, spacing: 8) {
+      // 現在選択されているモードに応じた文字起こしボタン
       HStack {
-        Text("AI文字起こし（WhisperKit）")
-          .font(.headline)
+        Text(getCurrentModeDescription())
+          .font(.caption)
+          .foregroundColor(.secondary)
         
         Spacer()
         
-        Button(action: { send(.startTranscription) }) {
-          HStack {
-            Image(systemName: "text.bubble")
-            Text(store.isTranscribing ? "変換中..." : "AI文字起こし")
-          }
-          .padding(.horizontal, 12)
-          .padding(.vertical, 6)
-          .background(store.isTranscribing ? Color.gray : Color.blue)
-          .foregroundColor(.white)
-          .cornerRadius(8)
-          .font(.caption)
-        }
-        .disabled(store.isTranscribing)
+        getCurrentModeButton()
       }
       
-      Text(store.transcription)
+      // 統合文字起こし結果表示
+      Text(getCurrentTranscriptionText())
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.systemGray6))
         .cornerRadius(8)
-        .foregroundColor(store.transcription.contains("AI文字起こしを開始するには") ? .secondary : .primary)
+        .foregroundColor(getCurrentTranscriptionText().contains("文字起こしを開始するには") ? .secondary : .primary)
+    }
+  }
+  
+  // MARK: - Helper Functions for Unified Transcription
+  
+  private func getCurrentModeDescription() -> String {
+    switch store.currentTranscriptionDisplay {
+    case .realtime:
+      return "録音中の音声認識"
+    case .apple:
+      return "SFSpeechRecognizer"
+    case .ai:
+      return "WhisperKit（高精度AI）"
+    }
+  }
+  
+  private func getCurrentTranscriptionText() -> String {
+    switch store.currentTranscriptionDisplay {
+    case .realtime:
+      return store.editedText.isEmpty ? "リアルタイム文字起こし結果なし" : store.editedText
+    case .apple:
+      return store.appleTranscription
+    case .ai:
+      return store.transcription
+    }
+  }
+  
+  @ViewBuilder
+  private func getCurrentModeButton() -> some View {
+    switch store.currentTranscriptionDisplay {
+    case .realtime:
+      EmptyView() // リアルタイムは録音中に自動実行されるのでボタンなし
+    case .apple:
+      Button(action: { send(.startAppleTranscription) }) {
+        HStack {
+          Image(systemName: "waveform")
+          Text(store.isAppleTranscribing ? "変換中..." : "Apple文字起こし")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(store.isAppleTranscribing ? Color.gray : Color.orange)
+        .foregroundColor(.white)
+        .cornerRadius(8)
+        .font(.caption)
+      }
+      .disabled(store.isAppleTranscribing)
+    case .ai:
+      Button(action: { send(.startTranscription) }) {
+        HStack {
+          Image(systemName: "text.bubble")
+          Text(store.isTranscribing ? "変換中..." : "AI文字起こし")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(store.isTranscribing ? Color.gray : Color.blue)
+        .foregroundColor(.white)
+        .cornerRadius(8)
+        .font(.caption)
+      }
+      .disabled(store.isTranscribing)
     }
   }
   

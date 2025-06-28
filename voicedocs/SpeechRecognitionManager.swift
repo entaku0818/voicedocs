@@ -216,7 +216,13 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
                             self?.transcribedText = transcription
                             self?.isTranscribing = false
                             self?.transcriptionProgress = "文字起こし完了"
-                            continuation.resume(returning: transcription)
+                            
+                            // 空の結果または音声が検出されなかった場合の処理
+                            if transcription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                continuation.resume(returning: "文字起こし結果がありませんでした")
+                            } else {
+                                continuation.resume(returning: transcription)
+                            }
                         }
                     }
                 }
