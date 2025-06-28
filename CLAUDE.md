@@ -18,6 +18,9 @@ xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs 
 
 # Run tests
 xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test
+
+# Build with macros enabled (use when macro compilation issues occur)
+xcodebuild -project voicedocs.xcodeproj -scheme voicedocs -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 15' OTHER_SWIFT_FLAGS="-Xfrontend -enable-experimental-feature -Xfrontend Macros" clean build
 ```
 
 ### Testing

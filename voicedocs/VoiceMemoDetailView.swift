@@ -181,17 +181,13 @@ struct VoiceMemoDetailFeature {
           }
           
         case .startTranscription:
-          if state.backgroundTranscriptionState == .idle {
-            return .send(.view(.startBackgroundTranscription))
-          } else {
-            state.isTranscribing = true
-            return .run { [memo = state.memo] send in
-              do {
-                let text = try await transcribeAudio(memo: memo)
-                await send(.transcriptionCompleted(text))
-              } catch {
-                await send(.transcriptionFailed(error.localizedDescription))
-              }
+          state.isTranscribing = true
+          return .run { [memo = state.memo] send in
+            do {
+              let text = try await transcribeAudio(memo: memo)
+              await send(.transcriptionCompleted(text))
+            } catch {
+              await send(.transcriptionFailed(error.localizedDescription))
             }
           }
           
@@ -281,9 +277,21 @@ struct VoiceMemoDetailFeature {
         }
         
       case let .transcriptionCompleted(text):
+        state.editedText = text
         state.transcription = text
         state.isTranscribing = false
-        return .none
+        // 自動的に保存
+        return .run { [memo = state.memo, title = state.editedTitle, text = text] send in
+          let success = voiceMemoController.updateVoiceMemo(
+            id: memo.id,
+            title: title.isEmpty ? "無題" : title,
+            text: text
+          )
+          if success {
+            let updatedMemo = voiceMemoController.fetchVoiceMemo(id: memo.id)
+            await send(.memoUpdated(updatedMemo ?? memo))
+          }
+        }
         
       case let .transcriptionFailed(error):
         state.transcription = "AI文字起こし中にエラーが発生しました: \(error)"
@@ -382,6 +390,7 @@ struct VoiceMemoDetailView: View {
   @Bindable var store: StoreOf<VoiceMemoDetailFeature>
   private let admobKey: String
   private let onMemoUpdated: (() -> Void)?
+  @State private var showingFileInfo = false
   
   init(store: StoreOf<VoiceMemoDetailFeature>, admobKey: String, onMemoUpdated: (() -> Void)? = nil) {
     self.store = store
@@ -392,13 +401,15 @@ struct VoiceMemoDetailView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
-        // ファイル情報セクション
-        fileInfoSection()
+        // タイトルを大きく中央に表示
+        Text(store.editedTitle)
+          .font(.largeTitle)
+          .fontWeight(.bold)
+          .frame(maxWidth: .infinity)
+          .multilineTextAlignment(.center)
+          .padding(.top)
         
-        // タイトル編集セクション
-        titleEditingSection()
-        
-        // テキスト編集セクション
+        // 文字起こし結果セクション（上に配置）
         textEditingSection()
         
         // 追加録音セグメント表示
@@ -406,16 +417,20 @@ struct VoiceMemoDetailView: View {
           segmentsSection()
         }
         
-        // AI文字起こしセクション
-        transcriptionSection()
-        
         // メインアクションボタン
         actionButtonsSection()
       }
       .padding()
     }
-    .navigationTitle(store.editedTitle)
+    .navigationTitle("")
     .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      ToolbarItem(placement: .navigationBarTrailing) {
+        Button(action: { showingFileInfo = true }) {
+          Image(systemName: "info.circle")
+        }
+      }
+    }
     .onAppear {
       send(.onAppear)
     }
@@ -452,66 +467,14 @@ struct VoiceMemoDetailView: View {
         buttons: createMoreMenuButtons()
       )
     }
+    .sheet(isPresented: $showingFileInfo) {
+      FileInfoView(memo: store.memo, onDismiss: { showingFileInfo = false })
+    }
   }
   
   // MARK: - View Components
   
-  private func fileInfoSection() -> some View {
-    VStack(alignment: .leading, spacing: 8) {
-      Text("ファイル情報")
-        .font(.headline)
-      
-      VStack(alignment: .leading, spacing: 4) {
-        HStack {
-          Text("作成日時:")
-            .foregroundColor(.secondary)
-          Spacer()
-          Text(formatDate(store.memo.date))
-        }
-        
-        let filePath = getFilePath(for: store.memo.id)
-        if let duration = getAudioDuration(filePath: filePath) {
-          HStack {
-            Text("録音時間:")
-              .foregroundColor(.secondary)
-            Spacer()
-            Text(formatDuration(duration + store.memo.totalDuration))
-          }
-        }
-        
-        if let fileSize = getFileSize(filePath: filePath) {
-          HStack {
-            Text("ファイルサイズ:")
-              .foregroundColor(.secondary)
-            Spacer()
-            Text(formatFileSize(fileSize))
-          }
-        }
-      }
-      .font(.caption)
-    }
-    .padding()
-    .background(Color(.systemGray6))
-    .cornerRadius(12)
-  }
   
-  private func titleEditingSection() -> some View {
-    VStack(alignment: .leading, spacing: 8) {
-      Text("タイトル")
-        .font(.headline)
-      
-      if store.isEditing {
-        TextField("タイトルを入力", text: $store.editedTitle)
-          .textFieldStyle(RoundedBorderTextFieldStyle())
-      } else {
-        Text(store.editedTitle)
-          .padding()
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .background(Color(.systemGray6))
-          .cornerRadius(8)
-      }
-    }
-  }
   
   private func textEditingSection() -> some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -530,6 +493,13 @@ struct VoiceMemoDetailView: View {
           }
           .font(.title2)
         }
+        
+        // 編集トグルボタン
+        Button(action: { send(.toggleEditing) }) {
+          Image(systemName: store.isEditing ? "checkmark.circle.fill" : "pencil.circle")
+            .foregroundColor(store.isEditing ? .green : .blue)
+        }
+        .font(.title2)
       }
       
       if store.isEditing {
@@ -579,75 +549,6 @@ struct VoiceMemoDetailView: View {
     }
   }
   
-  private func transcriptionSection() -> some View {
-    VStack(alignment: .leading, spacing: 8) {
-      HStack {
-        Text("AI文字起こし")
-          .font(.headline)
-        
-        Spacer()
-        
-        // バックグラウンド処理状態表示
-        switch store.backgroundTranscriptionState {
-        case .processing:
-          Button("一時停止") {
-            send(.pauseBackgroundTranscription)
-          }
-          .font(.caption)
-          .foregroundColor(.orange)
-        case .paused:
-          Button("再開") {
-            send(.resumeBackgroundTranscription)
-          }
-          .font(.caption)
-          .foregroundColor(.blue)
-        case .completed:
-          Text("完了")
-            .font(.caption)
-            .foregroundColor(.green)
-        case .failed(let error):
-          Text("エラー")
-            .font(.caption)
-            .foregroundColor(.red)
-        default:
-          EmptyView()
-        }
-      }
-      
-      // バックグラウンド処理の進捗表示
-      if case .processing = store.backgroundTranscriptionState {
-        VStack(alignment: .leading, spacing: 4) {
-          HStack {
-            Text("進捗: \(store.backgroundProgress.currentSegment)/\(store.backgroundProgress.totalSegments) セグメント")
-            Spacer()
-            Text("\(Int(store.backgroundProgress.percentage * 100))%")
-          }
-          .font(.caption)
-          .foregroundColor(.secondary)
-          
-          ProgressView(value: store.backgroundProgress.percentage)
-            .progressViewStyle(LinearProgressViewStyle())
-          
-          Text("処理時間: \(formatDuration(store.backgroundProgress.processedDuration)) / \(formatDuration(store.backgroundProgress.totalDuration))")
-            .font(.caption)
-            .foregroundColor(.secondary)
-        }
-        .padding(8)
-        .background(Color(.systemBlue).opacity(0.1))
-        .cornerRadius(8)
-      }
-      
-      // 文字起こし結果表示
-      let displayText = store.backgroundProgress.transcribedText.isEmpty ? store.transcription : store.backgroundProgress.transcribedText
-      
-      Text(displayText)
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .font(.body)
-    }
-  }
   
   private func actionButtonsSection() -> some View {
     VStack(spacing: 12) {
@@ -710,15 +611,15 @@ struct VoiceMemoDetailView: View {
         Button(action: { send(.startTranscription) }) {
           HStack {
             Image(systemName: "text.bubble")
-            Text(getTranscriptionButtonText())
+            Text(store.isTranscribing ? "変換中..." : "文字起こし")
           }
           .frame(maxWidth: .infinity)
           .padding()
-          .background(getTranscriptionButtonColor())
+          .background(store.isTranscribing ? Color.gray : Color.blue)
           .foregroundColor(.white)
           .cornerRadius(12)
         }
-        .disabled(store.isTranscribing || store.backgroundTranscriptionState == .processing)
+        .disabled(store.isTranscribing)
       }
       
       // その他メニューボタン
@@ -808,39 +709,6 @@ struct VoiceMemoDetailView: View {
     return buttons
   }
   
-  private func getTranscriptionButtonText() -> String {
-    switch store.backgroundTranscriptionState {
-    case .processing:
-      return "処理中..."
-    case .paused:
-      return "一時停止中"
-    case .completed:
-      return "完了"
-    case .failed(_):
-      return "再試行"
-    default:
-      if store.isTranscribing {
-        return "変換中..."
-      } else {
-        return "文字起こし"
-      }
-    }
-  }
-  
-  private func getTranscriptionButtonColor() -> Color {
-    switch store.backgroundTranscriptionState {
-    case .processing:
-      return Color.orange
-    case .paused:
-      return Color.blue
-    case .completed:
-      return Color.green
-    case .failed(_):
-      return Color.red
-    default:
-      return store.isTranscribing ? Color.gray : Color.blue
-    }
-  }
   
   private func formatDate(_ date: Date) -> String {
     let formatter = DateFormatter()
