@@ -21,12 +21,11 @@ struct VoiceMemoListView: View {
     @State private var shareItems: [Any] = []
     @State private var showingSearchAndSort = false
     @State private var isSearchActive = false
-    private let admobKey: String
+    @Environment(\.admobConfig) private var admobConfig
 
-    init(voiceMemoController: VoiceMemoControllerProtocol = VoiceMemoController.shared, admobKey: String = "") {
+    init(voiceMemoController: VoiceMemoControllerProtocol = VoiceMemoController.shared) {
         self.voiceMemoController = voiceMemoController
         self._voiceMemos = State(initialValue: voiceMemoController.fetchVoiceMemos())
-        self.admobKey = admobKey
     }
 
     var body: some View {
@@ -102,7 +101,7 @@ struct VoiceMemoListView: View {
                                     initialState: VoiceMemoDetailFeature.State(memo: memo),
                                     reducer: { VoiceMemoDetailFeature() }
                                 ),
-                                admobKey: admobKey,
+                                admobKey: admobConfig.interstitialAdUnitID,
                                 onMemoUpdated: { refreshMemos() }
                             )) {
                                 VoiceMemoRow(memo: memo, voiceMemoController: voiceMemoController)
@@ -122,6 +121,9 @@ struct VoiceMemoListView: View {
                     }
                 }
                 .navigationBarTitleDisplayMode(.inline)
+                
+                // バナー広告を下部に配置
+                bannerAdSection()
                 .toolbar {
                     ToolbarItem(placement: .principal) {
                         Text("文字起こし結果")
@@ -240,6 +242,16 @@ struct VoiceMemoListView: View {
         formatter.timeStyle = .short
         formatter.locale = Locale(identifier: "ja_JP")
         return formatter.string(from: date)
+    }
+    
+    private func bannerAdSection() -> some View {
+        VStack {
+            Divider()
+            
+            BannerAdView(adUnitID: admobConfig.bannerAdUnitID)
+                .frame(height: 50)
+                .background(Color(.systemGray6))
+        }
     }
 }
 
@@ -374,5 +386,5 @@ struct ShareSheet: UIViewControllerRepresentable {
 
 
 #Preview {
-    VoiceMemoListView(voiceMemoController: FakeVoiceMemoController(), admobKey: "")
+    VoiceMemoListView(voiceMemoController: FakeVoiceMemoController())
 }

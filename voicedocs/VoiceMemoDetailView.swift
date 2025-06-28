@@ -445,14 +445,14 @@ extension DependencyValues {
 @ViewAction(for: VoiceMemoDetailFeature.self)
 struct VoiceMemoDetailView: View {
   @Bindable var store: StoreOf<VoiceMemoDetailFeature>
-  private let admobKey: String
   private let onMemoUpdated: (() -> Void)?
   @State private var showingFileInfo = false
   @StateObject private var adManager: InterstitialAdManager
+  @Environment(\.admobConfig) private var admobConfig
   
   init(store: StoreOf<VoiceMemoDetailFeature>, admobKey: String, onMemoUpdated: (() -> Void)? = nil) {
+    print("🏗️ VoiceMemoDetailView init - AdMob Key: \(admobKey)")
     self.store = store
-    self.admobKey = admobKey
     self.onMemoUpdated = onMemoUpdated
     self._adManager = StateObject(wrappedValue: InterstitialAdManager(adUnitID: admobKey))
   }
@@ -473,6 +473,9 @@ struct VoiceMemoDetailView: View {
         
         // メインアクションボタン
         actionButtonsSection()
+        
+        // バナー広告
+        bannerAdSection()
       }
       .padding()
     }
@@ -896,5 +899,19 @@ struct VoiceMemoDetailView: View {
   
   private func getRandomHeight() -> CGFloat {
     return CGFloat.random(in: 4...20)
+  }
+  
+  private func bannerAdSection() -> some View {
+    VStack {
+      Text("広告")
+        .font(.caption)
+        .foregroundColor(.secondary)
+        .padding(.top, 8)
+      
+      BannerAdView(adUnitID: admobConfig.bannerAdUnitID)
+        .frame(width: 320, height: 50)
+        .background(Color(.systemGray6))
+        .cornerRadius(8)
+    }
   }
 }
