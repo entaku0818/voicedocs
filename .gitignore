@@ -1,2 +1,5 @@
 voicedocs.xcodeproj/xcuserdata/entaku.xcuserdatad
 voicedocs.xcodeproj/project.xcworkspace/xcuserdata/entaku.xcuserdatad
+
+# Configuration files with sensitive data
+voicedocs/Prod.xcconfig
