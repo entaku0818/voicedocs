@@ -10,7 +10,8 @@ import Foundation
 struct VoiceMemo: Equatable {
     var id: UUID
     var title: String
-    var text: String
+    var text: String  // リアルタイム文字起こし（録音中の音声認識）
+    var aiTranscriptionText: String = ""  // AI文字起こし（WhisperKit）
     var date: Date
     var segments: [AudioSegment] = []
     

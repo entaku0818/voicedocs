@@ -55,6 +55,7 @@ struct VoiceMemoDetailFeature {
       self.memo = memo
       self.editedTitle = memo.title
       self.editedText = memo.text
+      self.transcription = memo.aiTranscriptionText.isEmpty ? "AI文字起こしを開始するには、以下のボタンを押してください。" : memo.aiTranscriptionText
     }
   }
   
@@ -267,7 +268,8 @@ struct VoiceMemoDetailFeature {
             let success = voiceMemoController.updateVoiceMemo(
               id: memo.id,
               title: title.isEmpty ? "無題" : title,
-              text: text
+              text: text,  // リアルタイム文字起こしのみ保存
+              aiTranscriptionText: nil  // AI文字起こしは変更しない
             )
             if success {
               let updatedMemo = voiceMemoController.fetchVoiceMemo(id: memo.id)
@@ -277,15 +279,15 @@ struct VoiceMemoDetailFeature {
         }
         
       case let .transcriptionCompleted(text):
-        state.editedText = text
         state.transcription = text
         state.isTranscribing = false
-        // 自動的に保存
-        return .run { [memo = state.memo, title = state.editedTitle, text = text] send in
+        // AI文字起こしテキストを別フィールドに保存
+        return .run { [memo = state.memo, title = state.editedTitle] send in
           let success = voiceMemoController.updateVoiceMemo(
             id: memo.id,
             title: title.isEmpty ? "無題" : title,
-            text: text
+            text: nil,  // リアルタイム文字起こしは変更しない
+            aiTranscriptionText: text  // AI文字起こしとして保存
           )
           if success {
             let updatedMemo = voiceMemoController.fetchVoiceMemo(id: memo.id)
@@ -409,8 +411,11 @@ struct VoiceMemoDetailView: View {
           .multilineTextAlignment(.center)
           .padding(.top)
         
-        // 文字起こし結果セクション（上に配置）
-        textEditingSection()
+        // リアルタイム文字起こし結果セクション
+        realtimeTranscriptionSection()
+        
+        // AI文字起こし結果セクション
+        aiTranscriptionSection()
         
         // 追加録音セグメント表示
         if !store.memo.segments.isEmpty {
@@ -476,10 +481,10 @@ struct VoiceMemoDetailView: View {
   
   
   
-  private func textEditingSection() -> some View {
+  private func realtimeTranscriptionSection() -> some View {
     VStack(alignment: .leading, spacing: 8) {
       HStack {
-        Text("文字起こし結果")
+        Text("リアルタイム文字起こし（録音中の音声認識）")
           .font(.headline)
         
         Spacer()
@@ -516,6 +521,20 @@ struct VoiceMemoDetailView: View {
           .cornerRadius(8)
           .foregroundColor(store.editedText.isEmpty ? .secondary : .primary)
       }
+    }
+  }
+  
+  private func aiTranscriptionSection() -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text("AI文字起こし（WhisperKit）")
+        .font(.headline)
+      
+      Text(store.transcription)
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.systemGray6))
+        .cornerRadius(8)
+        .foregroundColor(store.transcription.contains("AI文字起こしを開始するには") ? .secondary : .primary)
     }
   }
   

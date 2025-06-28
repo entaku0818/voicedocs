@@ -11,25 +11,25 @@ class FakeVoiceMemoController: VoiceMemoControllerProtocol {
 
     init() {
         // 適当なデータを追加
-        var memo1 = VoiceMemo(id: UUID(), title: "Memo 1", text: "This is the first memo.", date: Date())
+        var memo1 = VoiceMemo(id: UUID(), title: "Memo 1", text: "This is the first memo.", aiTranscriptionText: "This is AI transcription for memo 1.", date: Date())
         memo1.transcriptionStatus = .completed
         memo1.transcriptionQuality = 0.85
         memo1.transcribedAt = Date().addingTimeInterval(-100)
         voiceMemos.append(memo1)
         
-        var memo2 = VoiceMemo(id: UUID(), title: "Memo 2", text: "This is the second memo.", date: Date().addingTimeInterval(-86400))
+        var memo2 = VoiceMemo(id: UUID(), title: "Memo 2", text: "This is the second memo.", aiTranscriptionText: "This is AI transcription for memo 2.", date: Date().addingTimeInterval(-86400))
         memo2.transcriptionStatus = .completed
         memo2.transcriptionQuality = 0.92
         memo2.transcribedAt = Date().addingTimeInterval(-86300)
         voiceMemos.append(memo2)
         
-        var memo3 = VoiceMemo(id: UUID(), title: "Memo 3", text: "This is the third memo.", date: Date().addingTimeInterval(-172800))
+        var memo3 = VoiceMemo(id: UUID(), title: "Memo 3", text: "This is the third memo.", aiTranscriptionText: "", date: Date().addingTimeInterval(-172800))
         memo3.transcriptionStatus = .none
         voiceMemos.append(memo3)
     }
 
     func saveVoiceMemo(id: UUID? = nil, title: String, text: String, filePath: String?) {
-        var newMemo = VoiceMemo(id: id ?? UUID(), title: title, text: text, date: Date())
+        var newMemo = VoiceMemo(id: id ?? UUID(), title: title, text: text, aiTranscriptionText: "", date: Date())
         newMemo.transcriptionStatus = text.isEmpty ? .none : .completed
         newMemo.transcriptionQuality = text.isEmpty ? 0.0 : 0.8
         newMemo.transcribedAt = text.isEmpty ? nil : Date()
@@ -52,7 +52,7 @@ class FakeVoiceMemoController: VoiceMemoControllerProtocol {
         return false
     }
     
-    func updateVoiceMemo(id: UUID, title: String?, text: String?) -> Bool {
+    func updateVoiceMemo(id: UUID, title: String?, text: String?, aiTranscriptionText: String? = nil) -> Bool {
         if let index = voiceMemos.firstIndex(where: { $0.id == id }) {
             var updatedMemo = voiceMemos[index]
             if let title = title {
@@ -60,6 +60,9 @@ class FakeVoiceMemoController: VoiceMemoControllerProtocol {
             }
             if let text = text {
                 updatedMemo.text = text
+            }
+            if let aiTranscriptionText = aiTranscriptionText {
+                updatedMemo.aiTranscriptionText = aiTranscriptionText
             }
             voiceMemos[index] = updatedMemo
             return true

@@ -11,7 +11,7 @@ protocol VoiceMemoControllerProtocol {
     func fetchVoiceMemos() -> [VoiceMemo]
     func fetchVoiceMemo(id: UUID) -> VoiceMemo?
     func deleteVoiceMemo(id: UUID) async -> Bool
-    func updateVoiceMemo(id: UUID, title: String?, text: String?) -> Bool
+    func updateVoiceMemo(id: UUID, title: String?, text: String?, aiTranscriptionText: String?) -> Bool
     func getFileSize(filePath: String) -> Int64?
     func getAudioDuration(filePath: String) -> TimeInterval?
     func deleteAudioFile(filePath: String) -> Bool
@@ -106,6 +106,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                     id: memoId,
                     title: memo.title ?? "",
                     text: memo.text ?? "",
+                    aiTranscriptionText: memo.aiTranscriptionText ?? "",
                     date: memo.createdAt ?? Date()
                 )
                 
@@ -168,7 +169,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
     }
     
     // 音声メモの更新処理
-    func updateVoiceMemo(id: UUID, title: String?, text: String?) -> Bool {
+    func updateVoiceMemo(id: UUID, title: String?, text: String?, aiTranscriptionText: String? = nil) -> Bool {
         let context = container.viewContext
         let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
@@ -185,6 +186,9 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             }
             if let text = text {
                 voiceMemo.text = text
+            }
+            if let aiTranscriptionText = aiTranscriptionText {
+                voiceMemo.aiTranscriptionText = aiTranscriptionText
             }
             
             try context.save()
