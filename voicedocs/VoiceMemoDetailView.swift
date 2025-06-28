@@ -5,9 +5,8 @@ import WhisperKit
 import GoogleMobileAds
 
 enum TranscriptionDisplayMode: String, CaseIterable {
-  case realtime = "リアルタイム"
-  case apple = "Apple"
-  case ai = "AI"
+  case apple = "文字起こし"
+  case ai = "AI文字起こし"
 }
 
 @Reducer
@@ -23,7 +22,7 @@ struct VoiceMemoDetailFeature {
                    lhs.isAppleTranscribing == rhs.isAppleTranscribing &&
                    lhs.appleTranscription == rhs.appleTranscription &&
                    lhs.currentTranscriptionDisplay == rhs.currentTranscriptionDisplay &&
-                   lhs.isEditingTitle == rhs.isEditingTitle &&
+                   lhs.showingTitleEditModal == rhs.showingTitleEditModal &&
                    lhs.isPlaying == rhs.isPlaying &&
                    lhs.showingShareSheet == rhs.showingShareSheet &&
                    lhs.showingSaveAlert == rhs.showingSaveAlert &&
@@ -41,9 +40,9 @@ struct VoiceMemoDetailFeature {
     var transcription: String = "AI文字起こしを開始するには、以下のボタンを押してください。"
     var isTranscribing = false
     var isAppleTranscribing = false
-    var appleTranscription: String = "Apple文字起こしを開始するには、以下のボタンを押してください。"
-    var currentTranscriptionDisplay: TranscriptionDisplayMode = .realtime
-    var isEditingTitle = false
+    var appleTranscription: String = "文字起こしを開始するには、以下のボタンを押してください。"
+    var currentTranscriptionDisplay: TranscriptionDisplayMode = .apple
+    var showingTitleEditModal = false
     var isPlaying = false
     var showingShareSheet = false
     var showingSaveAlert = false
@@ -67,7 +66,7 @@ struct VoiceMemoDetailFeature {
       self.editedText = memo.text
       self.transcription = memo.aiTranscriptionText.isEmpty ? "AI文字起こしを開始するには、以下のボタンを押してください。" : memo.aiTranscriptionText
       // Apple文字起こしは現在textフィールドに保存されているので、それを表示
-      self.appleTranscription = memo.text.isEmpty ? "Apple文字起こしを開始するには、以下のボタンを押してください。" : memo.text
+      self.appleTranscription = memo.text.isEmpty ? "文字起こしを開始するには、以下のボタンを押してください。" : memo.text
     }
   }
   
@@ -133,8 +132,8 @@ struct VoiceMemoDetailFeature {
       case resumeBackgroundTranscription
       case toggleAdditionalRecording
       case changeTranscriptionDisplay(TranscriptionDisplayMode)
-      case toggleTitleEditing
-      case saveTitleChanges
+      case showTitleEditModal
+      case saveTitleChanges(String)
       case showMoreMenu
       case shareButtonTapped
       case previewFillerWordRemoval
@@ -258,21 +257,17 @@ struct VoiceMemoDetailFeature {
           state.currentTranscriptionDisplay = mode
           return .none
           
-        case .toggleTitleEditing:
-          if state.isEditingTitle {
-            // 編集完了時は保存
-            state.isEditingTitle = false
-            return .send(.view(.saveTitleChanges))
-          } else {
-            state.isEditingTitle = true
-            return .none
-          }
+        case .showTitleEditModal:
+          state.showingTitleEditModal = true
+          return .none
           
-        case .saveTitleChanges:
-          return .run { [memo = state.memo, title = state.editedTitle] send in
+        case let .saveTitleChanges(newTitle):
+          state.showingTitleEditModal = false
+          state.editedTitle = newTitle.isEmpty ? "無題" : newTitle
+          return .run { [memo = state.memo, title = newTitle.isEmpty ? "無題" : newTitle] send in
             let success = voiceMemoController.updateVoiceMemo(
               id: memo.id,
-              title: title.isEmpty ? "無題" : title,
+              title: title,
               text: nil,  // タイトルのみ更新
               aiTranscriptionText: nil
             )
@@ -453,11 +448,13 @@ struct VoiceMemoDetailView: View {
   private let admobKey: String
   private let onMemoUpdated: (() -> Void)?
   @State private var showingFileInfo = false
+  @StateObject private var adManager: InterstitialAdManager
   
   init(store: StoreOf<VoiceMemoDetailFeature>, admobKey: String, onMemoUpdated: (() -> Void)? = nil) {
     self.store = store
     self.admobKey = admobKey
     self.onMemoUpdated = onMemoUpdated
+    self._adManager = StateObject(wrappedValue: InterstitialAdManager(adUnitID: admobKey))
   }
   
   var body: some View {
@@ -518,6 +515,17 @@ struct VoiceMemoDetailView: View {
     .sheet(isPresented: $showingFileInfo) {
       FileInfoView(memo: store.memo, onDismiss: { showingFileInfo = false })
     }
+    .sheet(isPresented: $store.showingTitleEditModal) {
+      TitleEditModal(
+        title: store.editedTitle,
+        onSave: { newTitle in
+          send(.saveTitleChanges(newTitle))
+        },
+        onCancel: {
+          store.showingTitleEditModal = false
+        }
+      )
+    }
   }
   
   // MARK: - View Components
@@ -525,26 +533,17 @@ struct VoiceMemoDetailView: View {
   private func titleSection() -> some View {
     VStack(spacing: 8) {
       HStack {
-        if store.isEditingTitle {
-          // 編集モード
-          TextField("タイトルを入力", text: $store.editedTitle)
-            .font(.largeTitle)
-            .fontWeight(.bold)
-            .multilineTextAlignment(.center)
-            .textFieldStyle(RoundedBorderTextFieldStyle())
-        } else {
-          // 表示モード
-          Text(store.editedTitle)
-            .font(.largeTitle)
-            .fontWeight(.bold)
-            .frame(maxWidth: .infinity)
-            .multilineTextAlignment(.center)
-        }
+        // タイトル表示
+        Text(store.editedTitle)
+          .font(.largeTitle)
+          .fontWeight(.bold)
+          .frame(maxWidth: .infinity)
+          .multilineTextAlignment(.center)
         
-        // 編集トグルボタン
-        Button(action: { send(.toggleTitleEditing) }) {
-          Image(systemName: store.isEditingTitle ? "checkmark.circle.fill" : "pencil.circle")
-            .foregroundColor(store.isEditingTitle ? .green : .blue)
+        // 編集ボタン
+        Button(action: { send(.showTitleEditModal) }) {
+          Image(systemName: "pencil.circle")
+            .foregroundColor(.blue)
             .font(.title2)
         }
       }
@@ -554,64 +553,64 @@ struct VoiceMemoDetailView: View {
   
   private func unifiedTranscriptionSection() -> some View {
     VStack(alignment: .leading, spacing: 8) {
-      // セクションヘッダーと切替ボタン
+      // セクションヘッダーとプルダウン切替
       HStack {
         Text("文字起こし結果")
           .font(.headline)
         
         Spacer()
         
-        // 表示切替セグメンテッドコントロール
-        Picker("表示切替", selection: Binding(
-          get: { store.currentTranscriptionDisplay },
-          set: { send(.changeTranscriptionDisplay($0)) }
-        )) {
+        // プルダウン形式の表示切替
+        Menu {
           ForEach(TranscriptionDisplayMode.allCases, id: \.self) { mode in
-            Text(mode.rawValue).tag(mode)
+            Button(action: {
+              send(.changeTranscriptionDisplay(mode))
+            }) {
+              HStack {
+                Text(mode.rawValue)
+                if store.currentTranscriptionDisplay == mode {
+                  Spacer()
+                  Image(systemName: "checkmark")
+                }
+              }
+            }
           }
+        } label: {
+          HStack {
+            Text(store.currentTranscriptionDisplay.rawValue)
+            Image(systemName: "chevron.down")
+          }
+          .padding(.horizontal, 12)
+          .padding(.vertical, 6)
+          .background(Color(.systemGray5))
+          .foregroundColor(.primary)
+          .cornerRadius(8)
         }
-        .pickerStyle(SegmentedPickerStyle())
-        .frame(width: 200)
       }
       
-      // 現在選択されているモードに応じた文字起こしボタン
-      HStack {
-        Text(getCurrentModeDescription())
-          .font(.caption)
-          .foregroundColor(.secondary)
+      // 文字起こし結果表示とボタン
+      VStack(spacing: 8) {
+        let transcriptionText = getCurrentTranscriptionText()
+        let hasResult = !transcriptionText.contains("文字起こしを開始するには")
         
-        Spacer()
+        // 結果表示
+        Text(transcriptionText)
+          .padding()
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .background(Color(.systemGray6))
+          .cornerRadius(8)
+          .foregroundColor(hasResult ? .primary : .secondary)
         
+        // ボタンを常に表示（何回でも実行可能）
         getCurrentModeButton()
       }
-      
-      // 統合文字起こし結果表示
-      Text(getCurrentTranscriptionText())
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.systemGray6))
-        .cornerRadius(8)
-        .foregroundColor(getCurrentTranscriptionText().contains("文字起こしを開始するには") ? .secondary : .primary)
     }
   }
   
   // MARK: - Helper Functions for Unified Transcription
   
-  private func getCurrentModeDescription() -> String {
-    switch store.currentTranscriptionDisplay {
-    case .realtime:
-      return "録音中の音声認識"
-    case .apple:
-      return "SFSpeechRecognizer"
-    case .ai:
-      return "WhisperKit（高精度AI）"
-    }
-  }
-  
   private func getCurrentTranscriptionText() -> String {
     switch store.currentTranscriptionDisplay {
-    case .realtime:
-      return store.editedText.isEmpty ? "リアルタイム文字起こし結果なし" : store.editedText
     case .apple:
       return store.appleTranscription
     case .ai:
@@ -622,34 +621,36 @@ struct VoiceMemoDetailView: View {
   @ViewBuilder
   private func getCurrentModeButton() -> some View {
     switch store.currentTranscriptionDisplay {
-    case .realtime:
-      EmptyView() // リアルタイムは録音中に自動実行されるのでボタンなし
     case .apple:
       Button(action: { send(.startAppleTranscription) }) {
         HStack {
           Image(systemName: "waveform")
-          Text(store.isAppleTranscribing ? "変換中..." : "Apple文字起こし")
+          Text(store.isAppleTranscribing ? "変換中..." : "文字起こし実行")
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(store.isAppleTranscribing ? Color.gray : Color.orange)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(store.isAppleTranscribing ? Color.gray : Color.blue)
         .foregroundColor(.white)
         .cornerRadius(8)
-        .font(.caption)
       }
       .disabled(store.isAppleTranscribing)
     case .ai:
-      Button(action: { send(.startTranscription) }) {
-        HStack {
-          Image(systemName: "text.bubble")
-          Text(store.isTranscribing ? "変換中..." : "AI文字起こし")
+      Button(action: {
+        // AI文字起こし前に広告を表示
+        adManager.showInterstitialAd {
+          // 広告終了後にAI文字起こしを開始
+          send(.startTranscription)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(store.isTranscribing ? Color.gray : Color.blue)
+      }) {
+        HStack {
+          Image(systemName: "brain")
+          Text(store.isTranscribing ? "変換中..." : "AI文字起こし実行")
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(store.isTranscribing ? Color.gray : Color.purple)
         .foregroundColor(.white)
         .cornerRadius(8)
-        .font(.caption)
       }
       .disabled(store.isTranscribing)
     }
@@ -688,47 +689,45 @@ struct VoiceMemoDetailView: View {
   
   private func actionButtonsSection() -> some View {
     VStack(spacing: 12) {
-      // 再生中のプログレス表示
-      if store.isPlaying, let progress = store.playbackProgress {
-        VStack(spacing: 8) {
-          // 再生時間表示
-          HStack {
-            Text(formatTime(progress.currentTime))
-              .font(.caption)
-              .foregroundColor(.secondary)
-            Spacer()
-            Text(formatTime(progress.duration))
-              .font(.caption)
-              .foregroundColor(.secondary)
-          }
-          
-          // プログレスバー
-          ProgressView(value: progress.progress)
-            .progressViewStyle(LinearProgressViewStyle(tint: .green))
-            .frame(height: 4)
-          
-          // 再生中アニメーション
-          HStack(spacing: 4) {
-            ForEach(0..<5) { index in
-              RoundedRectangle(cornerRadius: 2)
-                .fill(Color.green)
-                .frame(width: 3, height: store.isPlaying ? 20 : 10)
-                .animation(
-                  store.isPlaying ?
-                    Animation.easeInOut(duration: 0.4)
-                      .repeatForever(autoreverses: true)
-                      .delay(Double(index) * 0.1) :
-                    .default,
-                  value: store.isPlaying
-                )
-            }
-          }
-          .frame(height: 20)
+      // プログレス表示（常時表示）
+      VStack(spacing: 8) {
+        // 再生時間表示
+        HStack {
+          Text(formatTime(store.playbackProgress?.currentTime ?? 0))
+            .font(.caption)
+            .foregroundColor(.secondary)
+          Spacer()
+          Text(formatTime(store.playbackProgress?.duration ?? 0))
+            .font(.caption)
+            .foregroundColor(.secondary)
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        
+        // プログレスバー
+        ProgressView(value: store.playbackProgress?.progress ?? 0)
+          .progressViewStyle(LinearProgressViewStyle(tint: .green))
+          .frame(height: 4)
+        
+        // 音声波形アニメーション
+        HStack(spacing: 2) {
+          ForEach(0..<10) { index in
+            RoundedRectangle(cornerRadius: 1)
+              .fill(Color.green)
+              .frame(width: 2, height: store.isPlaying ? getRandomHeight() : 4)
+              .animation(
+                store.isPlaying ?
+                  Animation.easeInOut(duration: Double.random(in: 0.3...0.8))
+                    .repeatForever(autoreverses: true)
+                    .delay(Double(index) * 0.05) :
+                  .default,
+                value: store.isPlaying
+              )
+          }
+        }
+        .frame(height: 20)
       }
+      .padding()
+      .background(Color(.systemGray6))
+      .cornerRadius(12)
       
       // 再生ボタン
       Button(action: { send(.togglePlayback) }) {
@@ -893,5 +892,9 @@ struct VoiceMemoDetailView: View {
     } catch {
       return nil
     }
+  }
+  
+  private func getRandomHeight() -> CGFloat {
+    return CGFloat.random(in: 4...20)
   }
 }
