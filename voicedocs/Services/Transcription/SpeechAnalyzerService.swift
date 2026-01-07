@@ -4,12 +4,11 @@ import Speech
 
 /// SpeechAnalyzer-based transcription service for iOS 26+
 /// Uses Apple's new high-accuracy on-device transcription
-///
-/// NOTE: This is a stub implementation. The actual SpeechAnalyzer API
-/// will be available in iOS 26 SDK (Xcode 17+). Once the SDK is released,
-/// uncomment the implementation below.
 @available(iOS 26.0, *)
 final class SpeechAnalyzerService: TranscriptionServiceProtocol {
+
+    private var analyzer: SpeechAnalyzer?
+    private var transcriber: SpeechTranscriber?
 
     private(set) var isTranscribing: Bool = false
 
@@ -17,23 +16,21 @@ final class SpeechAnalyzerService: TranscriptionServiceProtocol {
 
     var isAvailable: Bool {
         get async {
-            // SpeechAnalyzer will be available on iOS 26+
-            return true
+            let locale = Locale(identifier: "ja-JP")
+            return await isLocaleSupported(locale)
         }
     }
 
     // MARK: - Locale Support
 
     func isLocaleSupported(_ locale: Locale) async -> Bool {
-        // Japanese and English are expected to be supported
-        let supportedIdentifiers = ["ja-JP", "ja", "en-US", "en"]
-        return supportedIdentifiers.contains(locale.identifier) ||
-               supportedIdentifiers.contains(locale.language.languageCode?.identifier ?? "")
+        let supported = await SpeechTranscriber.supportedLocales
+        return supported.contains { $0.identifier == locale.identifier }
     }
 
     func isModelInstalled(for locale: Locale) async -> Bool {
-        // Model availability will be checked via SpeechTranscriber.installedLocales
-        return true
+        let installed = await SpeechTranscriber.installedLocales
+        return installed.contains { $0.identifier == locale.identifier }
     }
 
     // MARK: - Model Download
@@ -42,8 +39,19 @@ final class SpeechAnalyzerService: TranscriptionServiceProtocol {
         guard await isLocaleSupported(locale) else {
             throw TranscriptionError.localeNotSupported
         }
-        // Model download will be handled via AssetInventory API
-        // Implementation pending iOS 26 SDK release
+
+        if await isModelInstalled(for: locale) {
+            return
+        }
+
+        // Create a temporary transcriber for download
+        let tempTranscriber = SpeechTranscriber(locale: locale, preset: .transcription)
+
+        if let downloader = try await AssetInventory.assetInstallationRequest(
+            supporting: [tempTranscriber]
+        ) {
+            try await downloader.downloadAndInstall()
+        }
     }
 
     // MARK: - File Transcription
@@ -57,69 +65,58 @@ final class SpeechAnalyzerService: TranscriptionServiceProtocol {
         }
 
         isTranscribing = true
-        defer { isTranscribing = false }
+        defer {
+            isTranscribing = false
+            cleanup()
+        }
 
-        // TODO: Implement with SpeechAnalyzer API when iOS 26 SDK is available
-        //
-        // Implementation will use:
-        // - SpeechTranscriber(locale: locale, preset: .offlineTranscription)
-        // - SpeechAnalyzer(modules: [transcriber])
-        // - analyzer.analyzeSequence(from: url)
-        // - transcriber.results for accumulating text
-        //
-        // For now, throw an error indicating the API is not yet available
-        throw TranscriptionError.recognitionFailed("SpeechAnalyzer API requires iOS 26 SDK")
-    }
-
-    // MARK: - Cancellation
-
-    func cancelTranscription() async {
-        isTranscribing = false
-    }
-}
-
-// MARK: - Full Implementation (iOS 26 SDK)
-// Uncomment and use once Xcode 17+ with iOS 26 SDK is available
-/*
-@available(iOS 26.0, *)
-extension SpeechAnalyzerService {
-
-    private var analyzer: SpeechAnalyzer?
-    private var transcriber: SpeechTranscriber?
-
-    func transcribeFileWithSpeechAnalyzer(
-        at url: URL,
-        configuration: TranscriptionConfiguration
-    ) async throws -> String {
         // Ensure model is downloaded
         try await downloadModelIfNeeded(for: configuration.locale)
 
-        // Create transcriber with offline preset for best accuracy
-        let transcriber = SpeechTranscriber(
-            locale: configuration.locale,
-            preset: .offlineTranscription
-        )
+        // Create transcriber with transcription preset for best accuracy
+        let transcriber = SpeechTranscriber(locale: configuration.locale, preset: .transcription)
+        self.transcriber = transcriber
 
         // Setup result accumulation
-        async let transcriptionFuture: String = {
+        let resultTask = Task<String, Error> {
             var result = ""
             for try await segment in transcriber.results {
-                result += segment.text
+                // Convert AttributedString to String
+                result += String(segment.text.characters)
             }
             return result
-        }()
+        }
 
         // Process file with SpeechAnalyzer
         let analyzer = SpeechAnalyzer(modules: [transcriber])
+        self.analyzer = analyzer
 
-        if let lastSample = try await analyzer.analyzeSequence(from: url) {
+        // Open audio file
+        let audioFile = try AVAudioFile(forReading: url)
+
+        if let lastSample = try await analyzer.analyzeSequence(from: audioFile) {
             try await analyzer.finalizeAndFinish(through: lastSample)
         } else {
             await analyzer.cancelAndFinishNow()
             throw TranscriptionError.noAudioData
         }
 
-        return try await transcriptionFuture
+        let transcribedText = try await resultTask.value
+
+        return transcribedText
+    }
+
+    // MARK: - Cancellation
+
+    func cancelTranscription() async {
+        await analyzer?.cancelAndFinishNow()
+        cleanup()
+    }
+
+    // MARK: - Private
+
+    private func cleanup() {
+        analyzer = nil
+        transcriber = nil
     }
 }
-*/
