@@ -383,12 +383,9 @@ struct VoiceMemoDetailFeature {
 // MARK: - Helper Functions
 private func transcribeAudio(memo: VoiceMemo) async throws -> String {
   let audioURL = getAudioURL(for: memo)
-  let whisper = try await WhisperKit()
-  let results = try await whisper.transcribe(
-    audioPath: audioURL.path,
-    decodeOptions: DecodingOptions(language: "ja")
-  )
-  return results.map { $0.text }.joined(separator: "\n")
+  let service = TranscriptionServiceFactory.shared.createService()
+  let configuration = TranscriptionConfiguration.japanese
+  return try await service.transcribeFile(at: audioURL, configuration: configuration)
 }
 
 private func getAudioURL(for memo: VoiceMemo) -> URL {

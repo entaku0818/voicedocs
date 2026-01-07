@@ -25,7 +25,10 @@
       "Bash(swift:*)",
       "Bash(rg:*)",
       "Bash(sed:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(git tag:*)",
+      "Bash(gh release create:*)",
+      "Bash(gh release delete:*)"
     ],
     "deny": []
   }
