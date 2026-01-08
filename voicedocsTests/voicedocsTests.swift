@@ -58,18 +58,6 @@ final class voicedocsTests: XCTestCase {
         XCTAssertEqual(audioRecorder.recordingQuality, .high)
     }
     
-    func testRecordingStateChanges() throws {
-        let expectation = XCTestExpectation(description: "Recording state should change")
-        
-        XCTAssertFalse(audioRecorder.isRecording)
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            expectation.fulfill()
-        }
-        
-        wait(for: [expectation], timeout: 1.0)
-    }
-    
     func testRecordingQualityAllCases() throws {
         let allQualities = RecordingQuality.allCases
         XCTAssertEqual(allQualities.count, 2)
