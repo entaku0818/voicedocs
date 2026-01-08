@@ -12,6 +12,8 @@ enum TranscriptionError: LocalizedError, Equatable {
     case audioConversionFailed
     case recognitionFailed(String)
     case timeout
+    case permissionDenied
+    case configurationFailed
 
     var errorDescription: String? {
         switch self {
@@ -35,6 +37,10 @@ enum TranscriptionError: LocalizedError, Equatable {
             return "文字起こしエラー: \(message)"
         case .timeout:
             return "文字起こしがタイムアウトしました"
+        case .permissionDenied:
+            return "マイクまたは音声認識の権限がありません"
+        case .configurationFailed:
+            return "設定に失敗しました"
         }
     }
 }

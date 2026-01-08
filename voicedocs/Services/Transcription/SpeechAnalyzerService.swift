@@ -1,6 +1,9 @@
 import Foundation
 import AVFoundation
 import Speech
+import os
+
+private let logger = Logger(subsystem: "com.entaku.voicedocs", category: "SpeechAnalyzer")
 
 /// SpeechAnalyzer-based transcription service for iOS 26+
 /// Uses Apple's new high-accuracy on-device transcription with real-time support
@@ -69,7 +72,12 @@ final class SpeechAnalyzerService: TranscriptionServiceProtocol {
         configuration: TranscriptionConfiguration,
         onProgress: @escaping (TranscriptionResult) -> Void
     ) async throws -> String {
+        logger.info("transcribeFileWithProgress started")
+        logger.info("URL: \(url.path)")
+        logger.info("enableVolatileResults: \(configuration.enableVolatileResults)")
+
         guard !isTranscribing else {
+            logger.error("Already transcribing")
             throw TranscriptionError.alreadyTranscribing
         }
 
@@ -80,11 +88,14 @@ final class SpeechAnalyzerService: TranscriptionServiceProtocol {
         }
 
         // Ensure model is downloaded
+        logger.info("Checking model...")
         try await downloadModelIfNeeded(for: configuration.locale)
+        logger.info("Model ready")
 
         // Create transcriber with or without volatile results
         let transcriber: SpeechTranscriber
         if configuration.enableVolatileResults {
+            logger.info("Creating transcriber with volatileResults")
             transcriber = SpeechTranscriber(
                 locale: configuration.locale,
                 transcriptionOptions: [],
@@ -92,15 +103,21 @@ final class SpeechAnalyzerService: TranscriptionServiceProtocol {
                 attributeOptions: [.audioTimeRange]
             )
         } else {
+            logger.info("Creating transcriber with preset")
             transcriber = SpeechTranscriber(locale: configuration.locale, preset: .transcription)
         }
         self.transcriber = transcriber
 
         // Setup result accumulation with progress callback
         let resultTask = Task<String, Error> {
+            logger.info("Result task started, waiting for segments...")
             var finalizedText = ""
+            var segmentCount = 0
             for try await segment in transcriber.results {
+                segmentCount += 1
                 let text = String(segment.text.characters)
+                logger.info("Segment #\(segmentCount): isFinal=\(segment.isFinal), text='\(text)'")
+
                 let result = TranscriptionResult(
                     text: text,
                     isFinal: segment.isFinal,
@@ -110,6 +127,7 @@ final class SpeechAnalyzerService: TranscriptionServiceProtocol {
 
                 // Call progress callback on main thread
                 await MainActor.run {
+                    logger.debug("Calling onProgress callback")
                     onProgress(result)
                 }
 
@@ -117,23 +135,35 @@ final class SpeechAnalyzerService: TranscriptionServiceProtocol {
                     finalizedText += text
                 }
             }
+            logger.info("Result task finished, total segments: \(segmentCount)")
             return finalizedText
         }
 
         // Process file with SpeechAnalyzer
+        logger.info("Creating analyzer...")
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         self.analyzer = analyzer
 
+        logger.info("Opening audio file...")
         let audioFile = try AVAudioFile(forReading: url)
+        logger.info("Audio file opened, length: \(audioFile.length) frames")
 
+        logger.info("Starting analyzeSequence...")
         if let lastSample = try await analyzer.analyzeSequence(from: audioFile) {
+            logger.info("analyzeSequence completed, lastSample: \(lastSample.seconds) seconds")
+            logger.info("Calling finalizeAndFinish...")
             try await analyzer.finalizeAndFinish(through: lastSample)
+            logger.info("finalizeAndFinish completed")
         } else {
+            logger.error("No audio data")
             await analyzer.cancelAndFinishNow()
             throw TranscriptionError.noAudioData
         }
 
-        return try await resultTask.value
+        logger.info("Waiting for result task...")
+        let result = try await resultTask.value
+        logger.info("Final result: '\(result)'")
+        return result
     }
 
     // MARK: - Cancellation
