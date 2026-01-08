@@ -3,7 +3,7 @@ import AVFoundation
 import Speech
 
 /// SpeechAnalyzer-based transcription service for iOS 26+
-/// Uses Apple's new high-accuracy on-device transcription
+/// Uses Apple's new high-accuracy on-device transcription with real-time support
 @available(iOS 26.0, *)
 final class SpeechAnalyzerService: TranscriptionServiceProtocol {
 
@@ -44,7 +44,6 @@ final class SpeechAnalyzerService: TranscriptionServiceProtocol {
             return
         }
 
-        // Create a temporary transcriber for download
         let tempTranscriber = SpeechTranscriber(locale: locale, preset: .transcription)
 
         if let downloader = try await AssetInventory.assetInstallationRequest(
@@ -54,11 +53,21 @@ final class SpeechAnalyzerService: TranscriptionServiceProtocol {
         }
     }
 
-    // MARK: - File Transcription
+    // MARK: - File Transcription (Batch)
 
     func transcribeFile(
         at url: URL,
         configuration: TranscriptionConfiguration
+    ) async throws -> String {
+        try await transcribeFileWithProgress(at: url, configuration: configuration) { _ in }
+    }
+
+    // MARK: - File Transcription with Real-time Progress
+
+    func transcribeFileWithProgress(
+        at url: URL,
+        configuration: TranscriptionConfiguration,
+        onProgress: @escaping (TranscriptionResult) -> Void
     ) async throws -> String {
         guard !isTranscribing else {
             throw TranscriptionError.alreadyTranscribing
@@ -73,25 +82,48 @@ final class SpeechAnalyzerService: TranscriptionServiceProtocol {
         // Ensure model is downloaded
         try await downloadModelIfNeeded(for: configuration.locale)
 
-        // Create transcriber with transcription preset for best accuracy
-        let transcriber = SpeechTranscriber(locale: configuration.locale, preset: .transcription)
+        // Create transcriber with or without volatile results
+        let transcriber: SpeechTranscriber
+        if configuration.enableVolatileResults {
+            transcriber = SpeechTranscriber(
+                locale: configuration.locale,
+                transcriptionOptions: [],
+                reportingOptions: [.volatileResults],
+                attributeOptions: [.audioTimeRange]
+            )
+        } else {
+            transcriber = SpeechTranscriber(locale: configuration.locale, preset: .transcription)
+        }
         self.transcriber = transcriber
 
-        // Setup result accumulation
+        // Setup result accumulation with progress callback
         let resultTask = Task<String, Error> {
-            var result = ""
+            var finalizedText = ""
             for try await segment in transcriber.results {
-                // Convert AttributedString to String
-                result += String(segment.text.characters)
+                let text = String(segment.text.characters)
+                let result = TranscriptionResult(
+                    text: text,
+                    isFinal: segment.isFinal,
+                    confidence: 1.0,
+                    locale: configuration.locale
+                )
+
+                // Call progress callback on main thread
+                await MainActor.run {
+                    onProgress(result)
+                }
+
+                if segment.isFinal {
+                    finalizedText += text
+                }
             }
-            return result
+            return finalizedText
         }
 
         // Process file with SpeechAnalyzer
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         self.analyzer = analyzer
 
-        // Open audio file
         let audioFile = try AVAudioFile(forReading: url)
 
         if let lastSample = try await analyzer.analyzeSequence(from: audioFile) {
@@ -101,9 +133,7 @@ final class SpeechAnalyzerService: TranscriptionServiceProtocol {
             throw TranscriptionError.noAudioData
         }
 
-        let transcribedText = try await resultTask.value
-
-        return transcribedText
+        return try await resultTask.value
     }
 
     // MARK: - Cancellation

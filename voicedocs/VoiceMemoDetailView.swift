@@ -1,7 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
 import AVFoundation
-import WhisperKit
 import GoogleMobileAds
 
 enum TranscriptionDisplayMode: String, CaseIterable {
