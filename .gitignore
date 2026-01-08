@@ -3,3 +3,10 @@ voicedocs.xcodeproj/project.xcworkspace/xcuserdata/entaku.xcuserdatad
 
 # Configuration files with sensitive data
 voicedocs/Prod.xcconfig
+
+# Fastlane
+fastlane/.env
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
