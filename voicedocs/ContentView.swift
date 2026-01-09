@@ -57,7 +57,7 @@ struct ContentView: View {
             await MainActor.run {
                 voiceMemoController.saveVoiceMemo(
                     id: memoId,
-                    title: "文字起こし結果 \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))",
+                    title: DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short),
                     text: transcription,
                     filePath: nil
                 )

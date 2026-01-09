@@ -334,7 +334,7 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
                 await MainActor.run {
                     voiceMemoController.saveVoiceMemo(
                         id: memoId, // 渡されたUUIDを使用
-                        title: "文字起こし結果 \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))",
+                        title: DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short),
                         text: "", // 音声認識結果は別途設定
                         filePath: nil // filePathは使用しない
                     )
