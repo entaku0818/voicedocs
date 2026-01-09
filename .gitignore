@@ -10,3 +10,6 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots
 fastlane/test_output
+*.p8
+fastlane/api_key.json
+.env*

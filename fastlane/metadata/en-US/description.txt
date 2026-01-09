@@ -1,0 +1,17 @@
+Transcribe is an app that leverages high-precision AI technology to quickly and accurately convert speech into text. It allows you to easily manage and share audio data from meetings, interviews, lectures, notes, and more.
+
+Key Features
+
+Real-Time Transcription: Converts speech to text in real-time and displays it instantly.
+High-Accuracy Speech Recognition: Utilizes the latest AI technology to achieve high-accuracy speech recognition.
+Multilingual Support: Supports multiple languages including Japanese, English, Chinese, and many others.
+Recommended For
+
+Business professionals looking to efficiently record meetings and interviews.
+Students who want to easily record lecture and seminar content.
+Anyone who wants to save the hassle of taking notes.
+With Simple Transcribe, effortlessly convert speech to text and enhance your daily tasks!
+
+
+
+
