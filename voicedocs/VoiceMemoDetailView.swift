@@ -3,10 +3,6 @@ import ComposableArchitecture
 import AVFoundation
 import GoogleMobileAds
 
-enum TranscriptionDisplayMode: String, CaseIterable {
-  case transcription = "文字起こし"
-  case summary = "議事録サマリー"
-}
 
 @Reducer
 struct VoiceMemoDetailFeature {
@@ -16,11 +12,8 @@ struct VoiceMemoDetailFeature {
             return lhs.memo.id == rhs.memo.id &&
                    lhs.editedTitle == rhs.editedTitle &&
                    lhs.editedText == rhs.editedText &&
-                   lhs.summaryText == rhs.summaryText &&
-                   lhs.isGeneratingSummary == rhs.isGeneratingSummary &&
-                   lhs.isAppleTranscribing == rhs.isAppleTranscribing &&
-                   lhs.appleTranscription == rhs.appleTranscription &&
-                   lhs.currentTranscriptionDisplay == rhs.currentTranscriptionDisplay &&
+                   lhs.isTranscribing == rhs.isTranscribing &&
+                   lhs.transcription == rhs.transcription &&
                    lhs.showingTitleEditModal == rhs.showingTitleEditModal &&
                    lhs.isPlaying == rhs.isPlaying &&
                    lhs.showingShareSheet == rhs.showingShareSheet &&
@@ -32,15 +25,12 @@ struct VoiceMemoDetailFeature {
                    lhs.additionalRecorderState == rhs.additionalRecorderState &&
                    lhs.playbackProgress == rhs.playbackProgress
         }
-        
+
     var memo: VoiceMemo
     var editedTitle: String
     var editedText: String
-    var summaryText: String = "サマリーを生成するには、以下のボタンを押してください。"
-    var isGeneratingSummary = false
-    var isAppleTranscribing = false
-    var appleTranscription: String = "文字起こしを開始するには、以下のボタンを押してください。"
-    var currentTranscriptionDisplay: TranscriptionDisplayMode = .transcription
+    var isTranscribing = false
+    var transcription: String = "文字起こしを開始するには、以下のボタンを押してください。"
     var showingTitleEditModal = false
     var isPlaying = false
     var showingShareSheet = false
@@ -63,9 +53,7 @@ struct VoiceMemoDetailFeature {
       self.memo = memo
       self.editedTitle = memo.title
       self.editedText = memo.text
-      self.summaryText = memo.aiTranscriptionText.isEmpty ? "サマリーを生成するには、以下のボタンを押してください。" : memo.aiTranscriptionText
-      // Apple文字起こしは現在textフィールドに保存されているので、それを表示
-      self.appleTranscription = memo.text.isEmpty ? "文字起こしを開始するには、以下のボタンを押してください。" : memo.text
+      self.transcription = memo.text.isEmpty ? "文字起こしを開始するには、以下のボタンを押してください。" : memo.text
     }
   }
   
@@ -108,10 +96,8 @@ struct VoiceMemoDetailFeature {
 
   enum Action: ViewAction, BindableAction {
     case binding(BindingAction<State>)
-    case summaryCompleted(String)
-    case summaryFailed(String)
-    case appleTranscriptionCompleted(String)
-    case appleTranscriptionFailed(String)
+    case transcriptionCompleted(String)
+    case transcriptionFailed(String)
     case backgroundTranscriptionStateChanged(BackgroundTranscriptionState)
     case backgroundProgressUpdated(CustomTranscriptionProgress)
     case additionalRecorderStateChanged(AdditionalRecorderState)
@@ -124,13 +110,11 @@ struct VoiceMemoDetailFeature {
       case onAppear
       case onDisappear
       case togglePlayback
-      case generateSummary
-      case startAppleTranscription
+      case startTranscription
       case startBackgroundTranscription
       case pauseBackgroundTranscription
       case resumeBackgroundTranscription
       case toggleAdditionalRecording
-      case changeTranscriptionDisplay(TranscriptionDisplayMode)
       case showTitleEditModal
       case saveTitleChanges(String)
       case showMoreMenu
@@ -195,26 +179,15 @@ struct VoiceMemoDetailFeature {
             }
           }
           
-        case .generateSummary:
-          state.isGeneratingSummary = true
-          return .run { [memo = state.memo, transcription = state.appleTranscription] send in
-            do {
-              let summary = try await generateSummary(from: transcription, memo: memo)
-              await send(.summaryCompleted(summary))
-            } catch {
-              await send(.summaryFailed(error.localizedDescription))
-            }
-          }
-          
-        case .startAppleTranscription:
-          state.isAppleTranscribing = true
+        case .startTranscription:
+          state.isTranscribing = true
           return .run { [memo = state.memo] send in
             do {
               let audioURL = getAudioURL(for: memo)
               let text = try await speechRecognitionManager.transcribeAudioFile(at: audioURL)
-              await send(.appleTranscriptionCompleted(text))
+              await send(.transcriptionCompleted(text))
             } catch {
-              await send(.appleTranscriptionFailed(error.localizedDescription))
+              await send(.transcriptionFailed(error.localizedDescription))
             }
           }
           
@@ -252,9 +225,6 @@ struct VoiceMemoDetailFeature {
             }
           }
           
-        case let .changeTranscriptionDisplay(mode):
-          state.currentTranscriptionDisplay = mode
-          return .none
           
         case .showTitleEditModal:
           state.showingTitleEditModal = true
@@ -301,16 +271,16 @@ struct VoiceMemoDetailFeature {
           
         }
         
-      case let .summaryCompleted(text):
-        state.summaryText = text
-        state.isGeneratingSummary = false
-        // サマリーテキストをaiTranscriptionTextフィールドに保存
+      case let .transcriptionCompleted(text):
+        state.transcription = text
+        state.isTranscribing = false
+        // 文字起こし結果をtextフィールドに保存
         return .run { [memo = state.memo, title = state.editedTitle] send in
           let success = voiceMemoController.updateVoiceMemo(
             id: memo.id,
             title: title.isEmpty ? "無題" : title,
-            text: nil,  // 文字起こしは変更しない
-            aiTranscriptionText: text  // サマリーとして保存
+            text: text,
+            aiTranscriptionText: nil
           )
           if success {
             let updatedMemo = voiceMemoController.fetchVoiceMemo(id: memo.id)
@@ -318,31 +288,9 @@ struct VoiceMemoDetailFeature {
           }
         }
 
-      case let .summaryFailed(error):
-        state.summaryText = "サマリー生成中にエラーが発生しました: \(error)"
-        state.isGeneratingSummary = false
-        return .none
-        
-      case let .appleTranscriptionCompleted(text):
-        state.appleTranscription = text
-        state.isAppleTranscribing = false
-        // Apple文字起こし結果をtextフィールドに保存（上書き）
-        return .run { [memo = state.memo, title = state.editedTitle] send in
-          let success = voiceMemoController.updateVoiceMemo(
-            id: memo.id,
-            title: title.isEmpty ? "無題" : title,
-            text: text,  // Apple文字起こし結果でtextフィールドを更新
-            aiTranscriptionText: nil  // AI文字起こしは変更しない
-          )
-          if success {
-            let updatedMemo = voiceMemoController.fetchVoiceMemo(id: memo.id)
-            await send(.memoUpdated(updatedMemo ?? memo))
-          }
-        }
-        
-      case let .appleTranscriptionFailed(error):
-        state.appleTranscription = "Apple文字起こし中にエラーが発生しました: \(error)"
-        state.isAppleTranscribing = false
+      case let .transcriptionFailed(error):
+        state.transcription = "文字起こし中にエラーが発生しました: \(error)"
+        state.isTranscribing = false
         return .none
         
       case let .backgroundTranscriptionStateChanged(newState):
@@ -380,39 +328,6 @@ struct VoiceMemoDetailFeature {
 }
 
 // MARK: - Helper Functions
-private func generateSummary(from transcription: String, memo: VoiceMemo) async throws -> String {
-  // 文字起こしテキストから議事録サマリーを生成
-  // 現時点ではシンプルなフォーマット変換を行う
-  // 将来的にはAI APIを使用してサマリーを生成可能
-
-  guard !transcription.isEmpty,
-        !transcription.contains("文字起こしを開始するには") else {
-    throw TranscriptionError.noAudioData
-  }
-
-  let dateFormatter = DateFormatter()
-  dateFormatter.dateFormat = "yyyy年MM月dd日 HH:mm"
-  let dateString = dateFormatter.string(from: memo.date)
-
-  let summary = """
-  【議事録サマリー】
-
-  日時: \(dateString)
-  タイトル: \(memo.title)
-
-  ─────────────────
-
-  【内容】
-  \(transcription)
-
-  ─────────────────
-
-  ※このサマリーは自動生成されました
-  """
-
-  return summary
-}
-
 private func getAudioURL(for memo: VoiceMemo) -> URL {
   guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
     fatalError("Documents directory not found")
@@ -578,65 +493,44 @@ struct VoiceMemoDetailView: View {
   
   private func unifiedTranscriptionSection() -> some View {
     VStack(alignment: .leading, spacing: 8) {
-      // セクションヘッダーとプルダウン切替
-      HStack {
-        Text("文字起こし結果")
-          .font(.headline)
-        
-        Spacer()
-        
-        // プルダウン形式の表示切替
-        Menu {
-          ForEach(TranscriptionDisplayMode.allCases, id: \.self) { mode in
-            Button(action: {
-              send(.changeTranscriptionDisplay(mode))
-            }) {
-              HStack {
-                Text(mode.rawValue)
-                if store.currentTranscriptionDisplay == mode {
-                  Spacer()
-                  Image(systemName: "checkmark")
-                }
-              }
-            }
-          }
-        } label: {
-          HStack {
-            Text(store.currentTranscriptionDisplay.rawValue)
-            Image(systemName: "chevron.down")
-          }
-          .padding(.horizontal, 12)
-          .padding(.vertical, 6)
-          .background(Color(.systemGray5))
-          .foregroundColor(.primary)
-          .cornerRadius(8)
+      // セクションヘッダー
+      Text("文字起こし結果")
+        .font(.headline)
+
+      // 文字起こし実行ボタン
+      Button(action: { send(.startTranscription) }) {
+        HStack {
+          Image(systemName: "waveform")
+          Text(store.isTranscribing ? "変換中..." : "文字起こし実行")
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(store.isTranscribing ? Color.gray : Color.blue)
+        .foregroundColor(.white)
+        .cornerRadius(8)
       }
-      
-      // 文字起こし実行ボタン（常に上部に表示）
-      getCurrentModeButton()
-      
+      .disabled(store.isTranscribing)
+
       // 文字起こし結果表示とコピーボタン
       VStack(spacing: 8) {
-        let transcriptionText = getCurrentTranscriptionText()
-        let hasResult = !transcriptionText.contains("文字起こしを開始するには")
-        
+        let hasResult = !store.transcription.contains("文字起こしを開始するには")
+
         // 結果表示
-        Text(transcriptionText)
+        Text(store.transcription)
           .padding()
           .frame(maxWidth: .infinity, alignment: .leading)
           .background(Color(.systemGray6))
           .cornerRadius(8)
           .foregroundColor(hasResult ? .primary : .secondary)
-        
+
         // コピーボタン（結果がある場合のみ表示）
         if hasResult {
           Button(action: {
-            UIPasteboard.general.string = transcriptionText
+            UIPasteboard.general.string = store.transcription
           }) {
             HStack {
               Image(systemName: "doc.on.doc")
-              Text("文字起こし結果をコピー")
+              Text("コピー")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -646,55 +540,6 @@ struct VoiceMemoDetailView: View {
           }
         }
       }
-    }
-  }
-  
-  // MARK: - Helper Functions for Unified Transcription
-  
-  private func getCurrentTranscriptionText() -> String {
-    switch store.currentTranscriptionDisplay {
-    case .transcription:
-      return store.appleTranscription
-    case .summary:
-      return store.summaryText
-    }
-  }
-  
-  @ViewBuilder
-  private func getCurrentModeButton() -> some View {
-    switch store.currentTranscriptionDisplay {
-    case .transcription:
-      Button(action: { send(.startAppleTranscription) }) {
-        HStack {
-          Image(systemName: "waveform")
-          Text(store.isAppleTranscribing ? "変換中..." : "文字起こし実行")
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(store.isAppleTranscribing ? Color.gray : Color.blue)
-        .foregroundColor(.white)
-        .cornerRadius(8)
-      }
-      .disabled(store.isAppleTranscribing)
-    case .summary:
-      Button(action: {
-        // サマリー生成前に広告を表示
-        adManager.showInterstitialAd {
-          // 広告終了後にサマリー生成を開始
-          send(.generateSummary)
-        }
-      }) {
-        HStack {
-          Image(systemName: "doc.text")
-          Text(store.isGeneratingSummary ? "生成中..." : "サマリー生成")
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(store.isGeneratingSummary ? Color.gray : Color.orange)
-        .foregroundColor(.white)
-        .cornerRadius(8)
-      }
-      .disabled(store.isGeneratingSummary || store.appleTranscription.contains("文字起こしを開始するには"))
     }
   }
   
@@ -839,10 +684,7 @@ struct VoiceMemoDetailView: View {
     作成日時: \(formatDate(store.memo.date))
 
     【文字起こし結果】
-    \(store.appleTranscription)
-
-    【議事録サマリー】
-    \(store.summaryText)
+    \(store.transcription)
     """
     items.append(textContent)
     
