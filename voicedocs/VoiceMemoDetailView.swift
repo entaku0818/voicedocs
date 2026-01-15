@@ -181,27 +181,55 @@ struct VoiceMemoDetailFeature {
           
         case .startTranscription:
           state.isTranscribing = true
+          state.backgroundTranscriptionState = .processing
           return .run { [memo = state.memo] send in
+            let audioURL = getAudioURL(for: memo)
+
+            // 進捗監視タスクを開始
+            let progressTask = Task {
+              while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
+                let progress = await MainActor.run { speechRecognitionManager.progress }
+                await send(.backgroundProgressUpdated(CustomTranscriptionProgress(
+                  currentSegment: progress.currentChunk,
+                  totalSegments: progress.totalChunks,
+                  processedDuration: progress.processedDuration,
+                  totalDuration: progress.totalDuration,
+                  transcribedText: progress.transcribedText
+                )))
+
+                if progress.status == .completed || progress.status == .cancelled {
+                  break
+                }
+              }
+            }
+
+            // 文字起こしを実行
             do {
-              let audioURL = getAudioURL(for: memo)
-              let text = try await speechRecognitionManager.transcribeAudioFile(at: audioURL)
+              let text = try await speechRecognitionManager.transcribeLongAudioFile(at: audioURL)
+              progressTask.cancel()
               await send(.transcriptionCompleted(text))
             } catch {
+              progressTask.cancel()
               await send(.transcriptionFailed(error.localizedDescription))
             }
           }
-          
+
         case .startBackgroundTranscription:
-          // Background transcription functionality removed
+          // startTranscriptionに統合済み
           return .none
-          
+
         case .pauseBackgroundTranscription:
-          // Pause functionality removed
-          return .none
-          
+          state.backgroundTranscriptionState = .paused
+          return .run { _ in
+            speechRecognitionManager.pauseTranscription()
+          }
+
         case .resumeBackgroundTranscription:
-          // Resume functionality removed
-          return .none
+          state.backgroundTranscriptionState = .processing
+          return .run { _ in
+            speechRecognitionManager.resumeTranscription()
+          }
           
         case .toggleAdditionalRecording:
           if state.additionalRecorderState.isRecording {
@@ -492,24 +520,86 @@ struct VoiceMemoDetailView: View {
   }
   
   private func unifiedTranscriptionSection() -> some View {
-    VStack(alignment: .leading, spacing: 8) {
+    VStack(alignment: .leading, spacing: 12) {
       // セクションヘッダー
       Text("文字起こし結果")
         .font(.headline)
 
-      // 文字起こし実行ボタン
-      Button(action: { send(.startTranscription) }) {
-        HStack {
-          Image(systemName: "waveform")
-          Text(store.isTranscribing ? "変換中..." : "文字起こし実行")
+      // 操作ボタン
+      HStack(spacing: 12) {
+        // 文字起こし実行ボタン
+        Button(action: { send(.startTranscription) }) {
+          HStack {
+            Image(systemName: "waveform")
+            Text(store.isTranscribing ? "変換中..." : "文字起こし実行")
+          }
+          .padding(.horizontal, 16)
+          .padding(.vertical, 10)
+          .background(store.isTranscribing ? Color.gray : Color.blue)
+          .foregroundColor(.white)
+          .cornerRadius(8)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(store.isTranscribing ? Color.gray : Color.blue)
-        .foregroundColor(.white)
+        .disabled(store.isTranscribing)
+
+        // 一時停止/再開ボタン（処理中のみ表示）
+        if store.isTranscribing {
+          if store.backgroundTranscriptionState == .paused {
+            Button(action: { send(.resumeBackgroundTranscription) }) {
+              HStack {
+                Image(systemName: "play.fill")
+                Text("再開")
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 10)
+              .background(Color.green)
+              .foregroundColor(.white)
+              .cornerRadius(8)
+            }
+          } else {
+            Button(action: { send(.pauseBackgroundTranscription) }) {
+              HStack {
+                Image(systemName: "pause.fill")
+                Text("一時停止")
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 10)
+              .background(Color.orange)
+              .foregroundColor(.white)
+              .cornerRadius(8)
+            }
+          }
+        }
+      }
+
+      // 進捗表示（処理中のみ）
+      if store.isTranscribing {
+        VStack(alignment: .leading, spacing: 8) {
+          // プログレスバー
+          ProgressView(value: store.backgroundProgress.percentage)
+            .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+
+          // 進捗テキスト
+          HStack {
+            Text("チャンク \(store.backgroundProgress.currentSegment)/\(store.backgroundProgress.totalSegments)")
+              .font(.caption)
+              .foregroundColor(.secondary)
+            Spacer()
+            Text("\(Int(store.backgroundProgress.percentage * 100))%")
+              .font(.caption)
+              .foregroundColor(.secondary)
+          }
+
+          // 処理時間
+          if store.backgroundProgress.totalDuration > 0 {
+            Text("処理済み: \(formatDuration(store.backgroundProgress.processedDuration)) / \(formatDuration(store.backgroundProgress.totalDuration))")
+              .font(.caption)
+              .foregroundColor(.secondary)
+          }
+        }
+        .padding()
+        .background(Color(.systemGray6))
         .cornerRadius(8)
       }
-      .disabled(store.isTranscribing)
 
       // 文字起こし結果表示とコピーボタン
       VStack(spacing: 8) {

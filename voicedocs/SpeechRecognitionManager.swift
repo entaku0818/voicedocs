@@ -11,6 +11,51 @@ import AVFoundation
 import os.log
 import Combine
 import UIKit
+import BackgroundTasks
+
+// MARK: - Transcription Progress
+struct TranscriptionProgress {
+    var currentChunk: Int = 0
+    var totalChunks: Int = 0
+    var processedDuration: TimeInterval = 0
+    var totalDuration: TimeInterval = 0
+    var transcribedText: String = ""
+    var status: TranscriptionStatus = .idle
+
+    var progressPercentage: Double {
+        guard totalDuration > 0 else { return 0 }
+        return min(processedDuration / totalDuration * 100, 100)
+    }
+
+    var progressDescription: String {
+        switch status {
+        case .idle:
+            return "待機中"
+        case .preparing:
+            return "準備中..."
+        case .transcribing:
+            return "文字起こし中: \(Int(progressPercentage))%"
+        case .paused:
+            return "一時停止中 (\(Int(progressPercentage))%)"
+        case .completed:
+            return "完了"
+        case .failed(let error):
+            return "エラー: \(error)"
+        case .cancelled:
+            return "キャンセル"
+        }
+    }
+
+    enum TranscriptionStatus: Equatable {
+        case idle
+        case preparing
+        case transcribing
+        case paused
+        case completed
+        case failed(String)
+        case cancelled
+    }
+}
 
 enum SpeechLanguage: String, CaseIterable {
     case japanese = "ja-JP"
@@ -56,7 +101,8 @@ enum SpeechRecognitionError: LocalizedError, Equatable {
 class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     private var speechRecognizer: SFSpeechRecognizer?
     private var recognitionTask: SFSpeechRecognitionTask?
-    
+
+    // MARK: - Published Properties
     @Published var transcribedText: String = ""
     @Published var isTranscribing: Bool = false
     @Published var currentLanguage: SpeechLanguage = .japanese
@@ -64,6 +110,20 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
     @Published var lastError: SpeechRecognitionError?
     @Published var isAvailable: Bool = false
     @Published var transcriptionProgress: String = ""
+
+    // MARK: - Long File Processing Properties
+    /// 長時間ファイル用の進捗状況
+    @Published var progress: TranscriptionProgress = TranscriptionProgress()
+    /// 一時停止フラグ
+    private var isPaused: Bool = false
+    /// キャンセルフラグ
+    private var isCancelled: Bool = false
+    /// チャンク分割時間（秒）- Speech Frameworkの制限は約1分
+    private let chunkDuration: TimeInterval = 55.0
+    /// 一時保存用のチャンク結果
+    private var chunkResults: [String] = []
+    /// 現在処理中のチャンクインデックス
+    private var currentChunkIndex: Int = 0
 
     override init() {
         super.init()
@@ -254,17 +314,217 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
         recognitionQuality = 0.0
         transcriptionProgress = ""
         lastError = nil
+        progress = TranscriptionProgress()
+        chunkResults = []
+        currentChunkIndex = 0
+        isPaused = false
+        isCancelled = false
     }
-    
+
     // 文字起こしをキャンセル
     func cancelTranscription() {
+        isCancelled = true
         recognitionTask?.cancel()
         recognitionTask = nil
-        
+
         DispatchQueue.main.async {
             self.isTranscribing = false
             self.transcriptionProgress = "文字起こしがキャンセルされました"
+            self.progress.status = .cancelled
         }
+    }
+
+    // MARK: - 長時間ファイル対応
+
+    /// 長時間音声ファイルを文字起こし（進捗付き）
+    func transcribeLongAudioFile(at url: URL) async throws -> String {
+        AppLogger.speechRecognition.info("Starting long file transcription: \(url.lastPathComponent)")
+
+        // 初期化
+        resetTranscription()
+
+        // 権限確認
+        guard await requestPermissions() else {
+            throw SpeechRecognitionError.unauthorized
+        }
+
+        guard speechRecognizer?.isAvailable == true else {
+            throw SpeechRecognitionError.unavailable
+        }
+
+        // ファイルの存在確認
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw SpeechRecognitionError.recognitionFailed("音声ファイルが見つかりません")
+        }
+
+        await MainActor.run {
+            self.isTranscribing = true
+            self.progress.status = .preparing
+        }
+
+        // 音声の長さを取得
+        let duration = try await getAudioDuration(url: url)
+        AppLogger.speechRecognition.info("Audio duration: \(duration) seconds")
+
+        await MainActor.run {
+            self.progress.totalDuration = duration
+        }
+
+        // 短いファイルは通常処理
+        if duration <= chunkDuration {
+            AppLogger.speechRecognition.info("Short file, using standard transcription")
+            let result = try await performFileTranscription(url: url)
+            await MainActor.run {
+                self.progress.status = .completed
+                self.progress.processedDuration = duration
+            }
+            return result
+        }
+
+        // 長いファイルはチャンク分割して処理
+        AppLogger.speechRecognition.info("Long file, using chunked transcription")
+        return try await transcribeInChunks(url: url, totalDuration: duration)
+    }
+
+    /// 音声ファイルの長さを取得
+    private func getAudioDuration(url: URL) async throws -> TimeInterval {
+        let asset = AVURLAsset(url: url)
+        let duration = try await asset.load(.duration)
+        return CMTimeGetSeconds(duration)
+    }
+
+    /// チャンク分割して文字起こし
+    private func transcribeInChunks(url: URL, totalDuration: TimeInterval) async throws -> String {
+        let totalChunks = Int(ceil(totalDuration / chunkDuration))
+
+        await MainActor.run {
+            self.progress.totalChunks = totalChunks
+            self.progress.status = .transcribing
+        }
+
+        chunkResults = []
+        currentChunkIndex = 0
+
+        for chunkIndex in 0..<totalChunks {
+            // キャンセルチェック
+            if isCancelled {
+                throw SpeechRecognitionError.recognitionFailed("キャンセルされました")
+            }
+
+            // 一時停止中は待機
+            while isPaused {
+                try await Task.sleep(nanoseconds: 500_000_000) // 0.5秒待機
+                if isCancelled {
+                    throw SpeechRecognitionError.recognitionFailed("キャンセルされました")
+                }
+            }
+
+            currentChunkIndex = chunkIndex
+            let startTime = Double(chunkIndex) * chunkDuration
+            let endTime = min(startTime + chunkDuration, totalDuration)
+
+            await MainActor.run {
+                self.progress.currentChunk = chunkIndex + 1
+                self.transcriptionProgress = "チャンク \(chunkIndex + 1)/\(totalChunks) を処理中..."
+            }
+
+            AppLogger.speechRecognition.info("Processing chunk \(chunkIndex + 1)/\(totalChunks): \(startTime)s - \(endTime)s")
+
+            // チャンクファイルを作成して文字起こし
+            do {
+                let chunkURL = try await createAudioChunk(from: url, startTime: startTime, duration: endTime - startTime)
+                let chunkText = try await performFileTranscription(url: chunkURL)
+
+                // 一時ファイルを削除
+                try? FileManager.default.removeItem(at: chunkURL)
+
+                if !chunkText.isEmpty && chunkText != "文字起こし結果がありませんでした" {
+                    chunkResults.append(chunkText)
+                }
+
+                await MainActor.run {
+                    self.progress.processedDuration = endTime
+                    self.progress.transcribedText = self.chunkResults.joined(separator: " ")
+                }
+            } catch {
+                AppLogger.speechRecognition.warning("Chunk \(chunkIndex + 1) failed: \(error.localizedDescription)")
+                // 個別のチャンクエラーは無視して続行
+            }
+        }
+
+        let finalText = chunkResults.joined(separator: " ")
+
+        await MainActor.run {
+            self.transcribedText = finalText
+            self.isTranscribing = false
+            self.progress.status = .completed
+            self.progress.transcribedText = finalText
+            self.transcriptionProgress = "文字起こし完了"
+        }
+
+        return finalText
+    }
+
+    /// 音声ファイルの一部を切り出して一時ファイルを作成
+    private func createAudioChunk(from sourceURL: URL, startTime: TimeInterval, duration: TimeInterval) async throws -> URL {
+        let asset = AVURLAsset(url: sourceURL)
+
+        // 出力ファイルのURL
+        let tempDir = FileManager.default.temporaryDirectory
+        let chunkFileName = "chunk_\(UUID().uuidString).m4a"
+        let chunkURL = tempDir.appendingPathComponent(chunkFileName)
+
+        // エクスポートセッションを作成
+        guard let exportSession = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
+            throw SpeechRecognitionError.recognitionFailed("音声エクスポートに失敗しました")
+        }
+
+        exportSession.outputURL = chunkURL
+        exportSession.outputFileType = .m4a
+
+        // 時間範囲を設定
+        let startCMTime = CMTime(seconds: startTime, preferredTimescale: 1000)
+        let durationCMTime = CMTime(seconds: duration, preferredTimescale: 1000)
+        exportSession.timeRange = CMTimeRange(start: startCMTime, duration: durationCMTime)
+
+        // エクスポート実行
+        await exportSession.export()
+
+        if exportSession.status == .completed {
+            return chunkURL
+        } else {
+            let errorMessage = exportSession.error?.localizedDescription ?? "不明なエラー"
+            throw SpeechRecognitionError.recognitionFailed("チャンク作成失敗: \(errorMessage)")
+        }
+    }
+
+    // MARK: - 一時停止・再開
+
+    /// 文字起こしを一時停止
+    func pauseTranscription() {
+        guard isTranscribing && !isPaused else { return }
+        isPaused = true
+        DispatchQueue.main.async {
+            self.progress.status = .paused
+            self.transcriptionProgress = "一時停止中..."
+        }
+        AppLogger.speechRecognition.info("Transcription paused at chunk \(currentChunkIndex + 1)")
+    }
+
+    /// 文字起こしを再開
+    func resumeTranscription() {
+        guard isPaused else { return }
+        isPaused = false
+        DispatchQueue.main.async {
+            self.progress.status = .transcribing
+            self.transcriptionProgress = "再開中..."
+        }
+        AppLogger.speechRecognition.info("Transcription resumed from chunk \(currentChunkIndex + 1)")
+    }
+
+    /// 一時停止中かどうか
+    var isTranscriptionPaused: Bool {
+        return isPaused
     }
 
     // 後方互換性のため残しておく（使用しない）
