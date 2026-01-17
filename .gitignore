@@ -13,3 +13,6 @@ fastlane/test_output
 *.p8
 fastlane/api_key.json
 .env*
+
+# Build artifacts
+build/
