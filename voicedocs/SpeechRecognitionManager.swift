@@ -508,7 +508,7 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
             self.progress.status = .paused
             self.transcriptionProgress = "一時停止中..."
         }
-        AppLogger.speechRecognition.info("Transcription paused at chunk \(currentChunkIndex + 1)")
+        AppLogger.speechRecognition.info("Transcription paused at chunk \(self.currentChunkIndex + 1)")
     }
 
     /// 文字起こしを再開
@@ -519,7 +519,7 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
             self.progress.status = .transcribing
             self.transcriptionProgress = "再開中..."
         }
-        AppLogger.speechRecognition.info("Transcription resumed from chunk \(currentChunkIndex + 1)")
+        AppLogger.speechRecognition.info("Transcription resumed from chunk \(self.currentChunkIndex + 1)")
     }
 
     /// 一時停止中かどうか

@@ -273,16 +273,25 @@ struct VoiceMemoListView: View {
             let title = "📁 " + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
 
             do {
-                // 音声ファイルをドキュメントディレクトリにコピー
+                // 音声ファイルをVoiceRecordingsディレクトリにコピー
                 let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-                let audioFileName = "\(UUID().uuidString).m4a"
-                let destURL = documentsPath.appendingPathComponent(audioFileName)
+                let voiceRecordingsPath = documentsPath.appendingPathComponent("VoiceRecordings")
+
+                // ディレクトリが存在しない場合は作成
+                if !FileManager.default.fileExists(atPath: voiceRecordingsPath.path) {
+                    try FileManager.default.createDirectory(at: voiceRecordingsPath, withIntermediateDirectories: true)
+                }
+
+                // メモIDを先に生成（ファイル名に使用）
+                let memoId = UUID()
+                let audioFileName = "recording-\(memoId.uuidString).m4a"
+                let destURL = voiceRecordingsPath.appendingPathComponent(audioFileName)
 
                 try FileManager.default.copyItem(at: result.processedURL, to: destURL)
 
                 // メモを保存（VoiceMemoControllerのメソッドを使用）
-                let memoId = UUID()
-                voiceMemoController.saveVoiceMemo(id: memoId, title: title, text: "", filePath: audioFileName)
+                // voiceFilePathは不要（IDから自動解決される）
+                voiceMemoController.saveVoiceMemo(id: memoId, title: title, text: "", filePath: "")
 
                 // セグメントを追加（音声ファイルの情報）
                 let segment = AudioSegment(

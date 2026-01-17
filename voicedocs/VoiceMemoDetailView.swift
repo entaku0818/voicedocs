@@ -178,7 +178,7 @@ struct VoiceMemoDetailFeature {
               await audioPlayerClient.stopPlayback()
             }
           }
-          
+
         case .startTranscription:
           state.isTranscribing = true
           state.backgroundTranscriptionState = .processing
@@ -637,7 +637,7 @@ struct VoiceMemoDetailView: View {
     VStack(alignment: .leading, spacing: 8) {
       Text("追加録音セグメント")
         .font(.headline)
-      
+
       ForEach(store.memo.segments.indices, id: \.self) { index in
         let segment = store.memo.segments[index]
         HStack {
@@ -645,18 +645,12 @@ struct VoiceMemoDetailView: View {
           Spacer()
           Text(formatDuration(segment.duration))
             .foregroundColor(.secondary)
-          
-          Button("削除") {
-            // Handle segment removal through store action
-          }
-          .font(.caption)
-          .foregroundColor(.red)
         }
         .padding()
         .background(Color(.systemGray6))
         .cornerRadius(8)
       }
-      
+
       Text("合計時間: \(formatDuration(store.memo.totalDuration))")
         .font(.caption)
         .foregroundColor(.secondary)
@@ -674,7 +668,8 @@ struct VoiceMemoDetailView: View {
             .font(.caption)
             .foregroundColor(.secondary)
           Spacer()
-          Text(formatTime(store.playbackProgress?.duration ?? 0))
+          // 再生中はplaybackProgressから、そうでなければtotalDurationを表示
+          Text(formatTime(store.playbackProgress?.duration ?? store.memo.totalDuration))
             .font(.caption)
             .foregroundColor(.secondary)
         }
@@ -878,9 +873,10 @@ struct VoiceMemoDetailView: View {
         .font(.caption)
         .foregroundColor(.secondary)
         .padding(.top, 8)
-      
+
       BannerAdView(adUnitID: admobConfig.bannerAdUnitID)
-        .frame(width: 320, height: 50)
+        .frame(maxWidth: .infinity)
+        .frame(height: 50)
         .background(Color(.systemGray6))
         .cornerRadius(8)
     }
