@@ -161,6 +161,59 @@ Single entity **VoiceMemoModel**:
 - Xcode Cloud configuration in `ci_scripts/ci_post_clone.sh`
 - Disables macro fingerprint validation for consistent builds
 
+## App Store リリース手順
+
+リリース時は以下の手順で行う。**必ずバージョンとリリース内容をユーザーに確認すること。**
+
+### 1. バージョン確認・更新
+```bash
+# 現在のバージョン確認
+grep -A1 'MARKETING_VERSION' voicedocs.xcodeproj/project.pbxproj | head -4
+
+# 最新タグ確認
+git tag --sort=-v:refname | head -5
+```
+
+ユーザーに以下を確認:
+- 新しいバージョン番号（パッチ/マイナー/メジャー）
+- リリース内容（変更点のサマリー）
+
+### 2. コミット・タグ・プッシュ
+```bash
+# バージョン更新
+sed -i '' 's/MARKETING_VERSION = X.X.X/MARKETING_VERSION = Y.Y.Y/g' voicedocs.xcodeproj/project.pbxproj
+
+# コミット
+git add -A && git commit -m "chore: バージョンY.Y.Yリリース
+
+- 変更内容1
+- 変更内容2
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+
+# タグ作成・プッシュ
+git tag vY.Y.Y && git push origin main && git push origin vY.Y.Y
+
+# GitHubリリース作成
+gh release create vY.Y.Y --title "vY.Y.Y" --notes "## 変更内容
+- 変更内容1
+- 変更内容2"
+```
+
+### 3. Xcodeでアーカイブ・アップロード
+Xcodeを開いて手動で実行:
+1. Product → Archive
+2. Distribute App → App Store Connect
+3. アップロード完了を待つ
+
+### 4. Fastlaneで審査提出
+```bash
+# メタデータアップロードと審査提出
+bundle exec fastlane upload_metadata
+```
+
+**注意**: ビルドがApp Store Connectにアップロードされてから審査提出すること。
+
 ## Development Guidelines
 
 ### Code Implementation Process
