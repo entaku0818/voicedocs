@@ -23,6 +23,15 @@ struct VoiceMemoListView: View {
     @State private var isSearchActive = false
     @Environment(\.admobConfig) private var admobConfig
 
+    // ファイルインポート関連
+    @State private var showingFilePicker = false
+    @State private var showingImportResult = false
+    @State private var isImporting = false
+    @State private var importProgress: Double = 0
+    @State private var importResult: ImportResult?
+    @State private var importError: String?
+    @StateObject private var inputSourceManager = InputSourceManager()
+
     init(voiceMemoController: VoiceMemoControllerProtocol = VoiceMemoController.shared) {
         self.voiceMemoController = voiceMemoController
         self._voiceMemos = State(initialValue: voiceMemoController.fetchVoiceMemos())
@@ -145,21 +154,40 @@ struct VoiceMemoListView: View {
                 }
 
 
-                NavigationLink(destination: ContentView()) {
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-                        Text("新しい録音")
+                // アクションボタン
+                HStack(spacing: 12) {
+                    // 新しい録音ボタン
+                    NavigationLink(destination: ContentView()) {
+                        HStack {
+                            Image(systemName: "mic.fill")
+                            Text("録音")
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
                     }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                    .padding()
+
+                    // ファイルからインポートボタン
+                    Button(action: { showingFilePicker = true }) {
+                        HStack {
+                            Image(systemName: "doc.fill")
+                            Text("ファイル")
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.green)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
                 }
+                .padding(.horizontal)
+                .padding(.bottom)
             }
             .onAppear {
                 refreshMemos()
+                inputSourceManager.cleanupOldImports()
             }
             .alert("文字起こし結果を削除", isPresented: $showingDeleteAlert) {
                 Button("削除", role: .destructive) {
@@ -173,6 +201,109 @@ struct VoiceMemoListView: View {
             }
             .sheet(isPresented: $showingShareSheet) {
                 ShareSheet(items: shareItems)
+            }
+            .sheet(isPresented: $showingFilePicker) {
+                AudioFilePickerView(isPresented: $showingFilePicker) { url in
+                    handleFileSelected(url: url)
+                }
+            }
+            .sheet(isPresented: $showingImportResult) {
+                if let result = importResult {
+                    ImportResultSheet(
+                        result: result,
+                        onTranscribe: {
+                            showingImportResult = false
+                            // TODO: 文字起こし処理へ遷移
+                            createMemoFromImport(result: result)
+                        },
+                        onCancel: {
+                            showingImportResult = false
+                            if let url = importResult?.processedURL {
+                                inputSourceManager.deleteImportedFile(at: url)
+                            }
+                            importResult = nil
+                        }
+                    )
+                }
+            }
+            .overlay {
+                if isImporting {
+                    Color.black.opacity(0.4)
+                        .ignoresSafeArea()
+                    ImportProgressView(
+                        progress: importProgress,
+                        fileName: "インポート中..."
+                    )
+                }
+            }
+            .alert("インポートエラー", isPresented: .constant(importError != nil)) {
+                Button("OK") { importError = nil }
+            } message: {
+                Text(importError ?? "")
+            }
+        }
+    }
+
+    // MARK: - File Import Handling
+
+    private func handleFileSelected(url: URL) {
+        isImporting = true
+        importProgress = 0
+
+        Task {
+            do {
+                let result = try await inputSourceManager.importAudioFile(from: url)
+                await MainActor.run {
+                    isImporting = false
+                    importResult = result
+                    showingImportResult = true
+                }
+            } catch {
+                await MainActor.run {
+                    isImporting = false
+                    importError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func createMemoFromImport(result: ImportResult) {
+        Task {
+            // VoiceMemoを作成
+            let title = "📁 " + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
+
+            do {
+                // 音声ファイルをドキュメントディレクトリにコピー
+                let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                let audioFileName = "\(UUID().uuidString).m4a"
+                let destURL = documentsPath.appendingPathComponent(audioFileName)
+
+                try FileManager.default.copyItem(at: result.processedURL, to: destURL)
+
+                // メモを保存（VoiceMemoControllerのメソッドを使用）
+                let memoId = UUID()
+                voiceMemoController.saveVoiceMemo(id: memoId, title: title, text: "", filePath: audioFileName)
+
+                // セグメントを追加（音声ファイルの情報）
+                let segment = AudioSegment(
+                    id: UUID(),
+                    filePath: audioFileName,
+                    startTime: 0,
+                    duration: result.duration ?? 0,
+                    createdAt: Date()
+                )
+                _ = voiceMemoController.addSegmentToMemo(memoId: memoId, segment: segment)
+
+                await MainActor.run {
+                    refreshMemos()
+                    // インポートした一時ファイルを削除
+                    inputSourceManager.deleteImportedFile(at: result.processedURL)
+                    importResult = nil
+                }
+            } catch {
+                await MainActor.run {
+                    importError = "メモの作成に失敗しました: \(error.localizedDescription)"
+                }
             }
         }
     }
