@@ -200,16 +200,37 @@ gh release create vY.Y.Y --title "vY.Y.Y" --notes "## 変更内容
 - 変更内容2"
 ```
 
-### 3. Xcodeでアーカイブ・アップロード
-Xcodeを開いて手動で実行:
-1. Product → Archive
-2. Distribute App → App Store Connect
-3. アップロード完了を待つ
+### 3. アーカイブ作成・App Store Connectアップロード
+```bash
+# アーカイブ作成
+xcodebuild -project voicedocs.xcodeproj -scheme voicedocs -configuration Release -archivePath ./build/voicedocs.xcarchive archive
+
+# ExportOptions.plist作成
+cat > /tmp/ExportOptions.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>app-store-connect</string>
+    <key>destination</key>
+    <string>upload</string>
+    <key>signingStyle</key>
+    <string>automatic</string>
+    <key>teamID</key>
+    <string>4YZQY4C47E</string>
+</dict>
+</plist>
+EOF
+
+# App Store Connectにアップロード
+xcodebuild -exportArchive -archivePath ./build/voicedocs.xcarchive -exportOptionsPlist /tmp/ExportOptions.plist -exportPath ./build/export -allowProvisioningUpdates
+```
 
 ### 4. Fastlaneで審査提出
 ```bash
-# メタデータアップロードと審査提出
-bundle exec fastlane upload_metadata
+# 環境変数読み込み + メタデータアップロード + 審査提出
+source fastlane/.env.default && fastlane upload_metadata
 ```
 
 **注意**: ビルドがApp Store Connectにアップロードされてから審査提出すること。

@@ -27,6 +27,41 @@ platform :ios do
     )
   end
 
+  # ビルドしてTestFlightにアップロード
+  desc "Build and upload to TestFlight"
+  lane :beta do
+    build_ios_app(
+      project: "voicedocs.xcodeproj",
+      scheme: "voicedocs",
+      export_method: "app-store",
+      output_directory: "./build",
+      output_name: "voicedocs.ipa"
+    )
+
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true
+    )
+  end
+
+  # ビルドしてApp Storeにアップロード
+  desc "Build and upload to App Store"
+  lane :release do
+    build_ios_app(
+      project: "voicedocs.xcodeproj",
+      scheme: "voicedocs",
+      export_method: "app-store",
+      output_directory: "./build",
+      output_name: "voicedocs.ipa"
+    )
+
+    upload_to_app_store(
+      force: true,
+      skip_screenshots: true,
+      skip_metadata: true,
+      precheck_include_in_app_purchases: false
+    )
+  end
+
   # スクリーンショットのダウンロード
   desc "Download screenshots from App Store Connect"
   lane :download_screenshots do
