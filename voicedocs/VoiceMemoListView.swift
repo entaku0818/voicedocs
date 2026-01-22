@@ -32,6 +32,13 @@ struct VoiceMemoListView: View {
     @State private var importError: String?
     @StateObject private var inputSourceManager = InputSourceManager()
 
+    // インポート後の遷移用
+    @State private var navigateToMemo: VoiceMemo?
+    @State private var shouldNavigateToDetail = false
+
+    // 長さ順ソート用のdurationキャッシュ
+    @State private var durationCache: [UUID: TimeInterval] = [:]
+
     init(voiceMemoController: VoiceMemoControllerProtocol = VoiceMemoController.shared) {
         self.voiceMemoController = voiceMemoController
         self._voiceMemos = State(initialValue: voiceMemoController.fetchVoiceMemos())
@@ -207,13 +214,33 @@ struct VoiceMemoListView: View {
                     handleFileSelected(url: url)
                 }
             }
+            .background(
+                // インポート後の詳細ビューへの遷移用NavigationLink
+                NavigationLink(
+                    destination: Group {
+                        if let memo = navigateToMemo {
+                            VoiceMemoDetailView(
+                                store: Store(
+                                    initialState: VoiceMemoDetailFeature.State(memo: memo),
+                                    reducer: { VoiceMemoDetailFeature() }
+                                ),
+                                admobKey: admobConfig.interstitialAdUnitID,
+                                onMemoUpdated: { refreshMemos() }
+                            )
+                        }
+                    },
+                    isActive: $shouldNavigateToDetail,
+                    label: { EmptyView() }
+                )
+                .hidden()
+            )
             .sheet(isPresented: $showingImportResult) {
                 if let result = importResult {
                     ImportResultSheet(
                         result: result,
                         onTranscribe: {
                             showingImportResult = false
-                            // TODO: 文字起こし処理へ遷移
+                            // メモを作成し、詳細ビュー（文字起こし処理画面）へ遷移
                             createMemoFromImport(result: result)
                         },
                         onCancel: {
@@ -308,6 +335,11 @@ struct VoiceMemoListView: View {
                     // インポートした一時ファイルを削除
                     inputSourceManager.deleteImportedFile(at: result.processedURL)
                     importResult = nil
+                    // インポートしたメモの詳細ビューへ遷移
+                    if let createdMemo = voiceMemoController.fetchVoiceMemo(id: memoId) {
+                        navigateToMemo = createdMemo
+                        shouldNavigateToDetail = true
+                    }
                 }
             } catch {
                 await MainActor.run {
@@ -334,19 +366,49 @@ struct VoiceMemoListView: View {
             case .titleZA:
                 return memo1.title.localizedCompare(memo2.title) == .orderedDescending
             case .durationLongest:
-                // 同期的な処理のため、とりあえず0を返すかメモリキャッシュ的なアプローチが必要
-                // TODO: 非同期対応が必要
-                return memo1.date > memo2.date // 暫定的に日付でソート
+                let duration1 = durationCache[memo1.id] ?? memo1.totalDuration
+                let duration2 = durationCache[memo2.id] ?? memo2.totalDuration
+                if duration1 == duration2 {
+                    return memo1.date > memo2.date // 同じ長さなら日付でソート
+                }
+                return duration1 > duration2
             case .durationShortest:
-                // 同期的な処理のため、とりあえず0を返すかメモリキャッシュ的なアプローチが必要
-                // TODO: 非同期対応が必要
-                return memo1.date < memo2.date // 暫定的に日付でソート
+                let duration1 = durationCache[memo1.id] ?? memo1.totalDuration
+                let duration2 = durationCache[memo2.id] ?? memo2.totalDuration
+                if duration1 == duration2 {
+                    return memo1.date < memo2.date // 同じ長さなら日付でソート
+                }
+                return duration1 < duration2
             }
         }
     }
     
     private func refreshMemos() {
         voiceMemos = voiceMemoController.fetchVoiceMemos()
+        // 長さ順ソート用にdurationをキャッシュ
+        loadDurationCache()
+    }
+
+    private func loadDurationCache() {
+        guard let controller = voiceMemoController as? VoiceMemoController else { return }
+        Task {
+            var newCache: [UUID: TimeInterval] = [:]
+            for memo in voiceMemos {
+                // まずセグメントからの計算値を使用
+                let segmentDuration = memo.totalDuration
+                if segmentDuration > 0 {
+                    newCache[memo.id] = segmentDuration
+                } else {
+                    // セグメントにdurationがない場合は非同期で取得
+                    if let duration = await controller.getAudioDurationById(memo.id) {
+                        newCache[memo.id] = duration
+                    }
+                }
+            }
+            await MainActor.run {
+                durationCache = newCache
+            }
+        }
     }
     
     private func deleteMemo(_ memo: VoiceMemo) {
