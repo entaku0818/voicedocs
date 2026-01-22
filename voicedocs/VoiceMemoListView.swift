@@ -32,6 +32,9 @@ struct VoiceMemoListView: View {
     @State private var importError: String?
     @StateObject private var inputSourceManager = InputSourceManager()
 
+    // Duration cache for sorting
+    @State private var memoDurations: [UUID: TimeInterval] = [:]
+
     init(voiceMemoController: VoiceMemoControllerProtocol = VoiceMemoController.shared) {
         self.voiceMemoController = voiceMemoController
         self._voiceMemos = State(initialValue: voiceMemoController.fetchVoiceMemos())
@@ -213,7 +216,6 @@ struct VoiceMemoListView: View {
                         result: result,
                         onTranscribe: {
                             showingImportResult = false
-                            // TODO: 文字起こし処理へ遷移
                             createMemoFromImport(result: result)
                         },
                         onCancel: {
@@ -334,19 +336,43 @@ struct VoiceMemoListView: View {
             case .titleZA:
                 return memo1.title.localizedCompare(memo2.title) == .orderedDescending
             case .durationLongest:
-                // 同期的な処理のため、とりあえず0を返すかメモリキャッシュ的なアプローチが必要
-                // TODO: 非同期対応が必要
-                return memo1.date > memo2.date // 暫定的に日付でソート
+                let duration1 = memoDurations[memo1.id]
+                let duration2 = memoDurations[memo2.id]
+                if let d1 = duration1, let d2 = duration2 {
+                    return d1 == d2 ? memo1.date > memo2.date : d1 > d2
+                }
+                return duration1 != nil ? true : (duration2 != nil ? false : memo1.date > memo2.date)
             case .durationShortest:
-                // 同期的な処理のため、とりあえず0を返すかメモリキャッシュ的なアプローチが必要
-                // TODO: 非同期対応が必要
-                return memo1.date < memo2.date // 暫定的に日付でソート
+                let duration1 = memoDurations[memo1.id]
+                let duration2 = memoDurations[memo2.id]
+                if let d1 = duration1, let d2 = duration2 {
+                    return d1 == d2 ? memo1.date > memo2.date : d1 < d2
+                }
+                return duration1 != nil ? true : (duration2 != nil ? false : memo1.date > memo2.date)
             }
         }
     }
     
     private func refreshMemos() {
         voiceMemos = voiceMemoController.fetchVoiceMemos()
+        loadDurations()
+    }
+
+    private func loadDurations() {
+        Task {
+            guard let controller = voiceMemoController as? VoiceMemoController else { return }
+
+            var durations: [UUID: TimeInterval] = [:]
+            for memo in voiceMemos {
+                if let duration = await controller.getAudioDurationById(memo.id) {
+                    durations[memo.id] = duration
+                }
+            }
+
+            await MainActor.run {
+                memoDurations = durations
+            }
+        }
     }
     
     private func deleteMemo(_ memo: VoiceMemo) {

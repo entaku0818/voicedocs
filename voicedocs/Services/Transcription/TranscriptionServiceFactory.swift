@@ -1,7 +1,6 @@
 import Foundation
 
 /// Factory for creating transcription services (iOS 26+)
-@available(iOS 26.0, *)
 final class TranscriptionServiceFactory {
 
     static let shared = TranscriptionServiceFactory()

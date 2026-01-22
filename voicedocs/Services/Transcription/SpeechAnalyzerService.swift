@@ -7,7 +7,6 @@ private let logger = Logger(subsystem: "com.entaku.voicedocs", category: "Speech
 
 /// SpeechAnalyzer-based transcription service for iOS 26+
 /// Uses Apple's new high-accuracy on-device transcription with real-time support
-@available(iOS 26.0, *)
 final class SpeechAnalyzerService: TranscriptionServiceProtocol {
 
     private var analyzer: SpeechAnalyzer?

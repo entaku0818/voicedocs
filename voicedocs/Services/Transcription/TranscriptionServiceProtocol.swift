@@ -44,7 +44,6 @@ struct TranscriptionConfiguration {
 }
 
 /// Unified protocol for transcription services (iOS 26+)
-@available(iOS 26.0, *)
 protocol TranscriptionServiceProtocol: AnyObject {
     /// Service availability
     var isAvailable: Bool { get async }

@@ -14,7 +14,6 @@ import UIKit
 private let logger = Logger(subsystem: "com.entaku.voicedocs", category: "RealtimeRecorder")
 
 /// Recorder that provides real-time transcription during recording
-@available(iOS 26.0, *)
 final class RealtimeTranscriptionRecorder: NSObject, ObservableObject {
 
     // MARK: - Audio Engine Components
@@ -68,7 +67,7 @@ final class RealtimeTranscriptionRecorder: NSObject, ObservableObject {
         do {
             try recordingSession.setCategory(.playAndRecord,
                                              mode: .default,
-                                             options: [.defaultToSpeaker, .allowBluetoothHFP, .allowBluetoothA2DP])
+                                             options: [.defaultToSpeaker, .allowBluetooth])
         } catch {
             logger.error("Failed to setup recording session: \(error.localizedDescription)")
         }

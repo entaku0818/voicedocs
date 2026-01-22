@@ -18,19 +18,20 @@ claude --dangerously-skip-permissions
 
 ```bash
 # Build the project (ALWAYS RUN THIS AFTER MAKING CODE CHANGES)
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -sdk iphonesimulator -arch arm64 build CODE_SIGNING_ALLOWED=NO
+# Note: -skipMacroValidation is required for ComposableArchitecture macros to work correctly
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' -skipMacroValidation build
 
 # Quick build check with filtered output
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -sdk iphonesimulator -arch arm64 build CODE_SIGNING_ALLOWED=NO | grep -E "(error:|warning:|FAILED|SUCCEEDED)"
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' -skipMacroValidation build 2>&1 | grep -E "(error:|warning:|FAILED|SUCCEEDED)"
 
 # Build for testing
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug build-for-testing
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' -skipMacroValidation build-for-testing
 
 # Run tests
 xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test
 
-# Build with macros enabled (use when macro compilation issues occur)
-xcodebuild -project voicedocs.xcodeproj -scheme voicedocs -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 15' OTHER_SWIFT_FLAGS="-Xfrontend -enable-experimental-feature -Xfrontend Macros" clean build
+# Legacy build command (deprecated - use destination-based build above)
+# xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -sdk iphonesimulator -arch arm64 build CODE_SIGNING_ALLOWED=NO
 ```
 
 ### Testing
