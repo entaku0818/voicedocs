@@ -206,7 +206,7 @@ struct VoiceMemoListView: View {
                 ShareSheet(items: shareItems)
             }
             .sheet(isPresented: $showingFilePicker) {
-                AudioFilePickerView(isPresented: $showingFilePicker) { url in
+                AudioFilePickerView(isPresented: $showingFilePicker, allowVideoFiles: true) { url in
                     handleFileSelected(url: url)
                 }
             }
@@ -254,7 +254,16 @@ struct VoiceMemoListView: View {
 
         Task {
             do {
-                let result = try await inputSourceManager.importAudioFile(from: url)
+                // ファイル形式に応じて適切なインポートメソッドを呼び出す
+                let result: ImportResult
+                if SupportedVideoFormats.isSupported(url: url) {
+                    // 動画ファイルの場合
+                    result = try await inputSourceManager.importVideoFile(from: url)
+                } else {
+                    // 音声ファイルの場合
+                    result = try await inputSourceManager.importAudioFile(from: url)
+                }
+
                 await MainActor.run {
                     isImporting = false
                     importResult = result

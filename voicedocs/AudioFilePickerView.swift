@@ -9,20 +9,36 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-/// 音声ファイルピッカー
+/// 音声・動画ファイルピッカー
 struct AudioFilePickerView: UIViewControllerRepresentable {
     @Binding var isPresented: Bool
     let onFilePicked: (URL) -> Void
+    let allowVideoFiles: Bool
+
+    init(isPresented: Binding<Bool>, allowVideoFiles: Bool = false, onFilePicked: @escaping (URL) -> Void) {
+        self._isPresented = isPresented
+        self.allowVideoFiles = allowVideoFiles
+        self.onFilePicked = onFilePicked
+    }
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         // 対応する音声形式
-        let supportedTypes: [UTType] = [
+        var supportedTypes: [UTType] = [
             .audio,
             .mpeg4Audio,
             .mp3,
             .wav,
             .aiff
         ]
+
+        // 動画形式も追加
+        if allowVideoFiles {
+            supportedTypes.append(contentsOf: [
+                .movie,
+                .mpeg4Movie,
+                .quickTimeMovie
+            ])
+        }
 
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: supportedTypes)
         picker.delegate = context.coordinator
