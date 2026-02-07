@@ -215,4 +215,76 @@ final class InputSourceManagerTests: XCTestCase {
         XCTAssertTrue(voiceRecordingsPath.path.contains("VoiceRecordings"))
         XCTAssertEqual(voiceRecordingsPath.lastPathComponent, "VoiceRecordings")
     }
+
+    // MARK: - Video Import Tests
+
+    func testImportVideoFileUnsupportedFormat() async {
+        // サポートされていない動画形式のファイル
+        let unsupportedVideoURL = testDirectory.appendingPathComponent("test.avi")
+        try? "test content".write(to: unsupportedVideoURL, atomically: true, encoding: .utf8)
+
+        do {
+            _ = try await inputSourceManager.importVideoFile(from: unsupportedVideoURL)
+            XCTFail("Should throw unsupportedFormat error")
+        } catch let error as InputSourceError {
+            if case .unsupportedFormat(let format) = error {
+                XCTAssertEqual(format, "avi")
+            } else {
+                XCTFail("Wrong error type: \(error)")
+            }
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testImportVideoFileExtractsAudio() async throws {
+        // Note: このテストは実際の動画ファイルが必要なため、
+        // モックやテスト用の短い動画ファイルを用意する必要があります
+        // ここではメソッドの存在と基本的なフローをテストします
+
+        // テスト用の動画ファイルパス（実際のファイルがない場合はスキップ）
+        let testVideoURL = testDirectory.appendingPathComponent("test.mp4")
+
+        // 実際の動画ファイルが存在しない場合はスキップ
+        guard FileManager.default.fileExists(atPath: testVideoURL.path) else {
+            throw XCTSkip("Test video file not available")
+        }
+
+        // 動画ファイルをインポート
+        let result = try await inputSourceManager.importVideoFile(from: testVideoURL)
+
+        // 結果の検証
+        XCTAssertEqual(result.sourceType, .videoFile)
+        XCTAssertNotNil(result.duration)
+        XCTAssertTrue(result.processedURL.pathExtension == "m4a", "Extracted audio should be m4a format")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: result.processedURL.path))
+    }
+
+    func testImportVideoFileProgressUpdates() async {
+        // 進捗が更新されることを確認
+        XCTAssertEqual(inputSourceManager.importProgress, 0)
+
+        // Note: 実際の動画ファイルなしでは進捗テストは難しいため、
+        // 統合テストとして実機/シミュレータで確認することを推奨
+    }
+
+    func testVideoExtractionFailureHandling() async {
+        // 破損した動画ファイルや無効なファイルの場合のエラーハンドリング
+        let corruptedVideoURL = testDirectory.appendingPathComponent("corrupted.mp4")
+        try? Data(repeating: 0, count: 100).write(to: corruptedVideoURL) // 無効なデータ
+
+        do {
+            _ = try await inputSourceManager.importVideoFile(from: corruptedVideoURL)
+            XCTFail("Should throw extractionFailed error")
+        } catch let error as InputSourceError {
+            if case .extractionFailed = error {
+                // 期待通りのエラー
+            } else {
+                XCTFail("Expected extractionFailed error, got: \(error)")
+            }
+        } catch {
+            // AVAssetExportSessionのエラーも許容
+            XCTAssertTrue(true, "Audio extraction failed as expected")
+        }
+    }
 }

@@ -229,6 +229,110 @@ class InputSourceManager: ObservableObject {
         return CMTimeGetSeconds(duration)
     }
 
+    // MARK: - Video File Import
+
+    /// 動画ファイルから音声を抽出してインポート
+    func importVideoFile(from url: URL) async throws -> ImportResult {
+        await MainActor.run {
+            self.isImporting = true
+            self.importProgress = 0
+            self.lastError = nil
+        }
+
+        defer {
+            Task { @MainActor in
+                self.isImporting = false
+            }
+        }
+
+        // ファイル形式チェック
+        guard SupportedVideoFormats.isSupported(url: url) else {
+            let error = "非対応の動画形式です: \(url.pathExtension)"
+            await MainActor.run { self.lastError = error }
+            throw InputSourceError.unsupportedFormat(url.pathExtension)
+        }
+
+        await MainActor.run { self.importProgress = 0.1 }
+
+        // セキュリティスコープアクセス
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessed { url.stopAccessingSecurityScopedResource() }
+        }
+
+        // 出力先の音声ファイルパス
+        let audioFileName = "\(UUID().uuidString).m4a"
+        let audioURL = importDirectory.appendingPathComponent(audioFileName)
+
+        // 既存ファイルがあれば削除
+        if fileManager.fileExists(atPath: audioURL.path) {
+            try? fileManager.removeItem(at: audioURL)
+        }
+
+        await MainActor.run { self.importProgress = 0.2 }
+
+        // AVAssetExportSessionで音声抽出
+        let asset = AVURLAsset(url: url)
+
+        guard let exportSession = AVAssetExportSession(
+            asset: asset,
+            presetName: AVAssetExportPresetAppleM4A
+        ) else {
+            let errorMsg = "音声抽出セッションの作成に失敗しました"
+            await MainActor.run { self.lastError = errorMsg }
+            throw InputSourceError.extractionFailed("ExportSession creation failed")
+        }
+
+        exportSession.outputURL = audioURL
+        exportSession.outputFileType = .m4a
+
+        await MainActor.run { self.importProgress = 0.4 }
+
+        // 音声抽出を実行
+        await exportSession.export()
+
+        await MainActor.run { self.importProgress = 0.7 }
+
+        // エクスポート結果をチェック
+        guard exportSession.status == .completed else {
+            let errorMsg: String
+            if let error = exportSession.error {
+                errorMsg = "音声抽出に失敗しました: \(error.localizedDescription)"
+            } else {
+                errorMsg = "音声抽出に失敗しました: ステータス \(exportSession.status.rawValue)"
+            }
+            await MainActor.run { self.lastError = errorMsg }
+            throw InputSourceError.extractionFailed(errorMsg)
+        }
+
+        // 音声ファイルが作成されたか確認
+        guard fileManager.fileExists(atPath: audioURL.path) else {
+            let errorMsg = "抽出された音声ファイルが見つかりません"
+            await MainActor.run { self.lastError = errorMsg }
+            throw InputSourceError.extractionFailed(errorMsg)
+        }
+
+        await MainActor.run { self.importProgress = 0.9 }
+
+        // 音声の長さを取得
+        let duration = try await getAudioDuration(url: audioURL)
+
+        await MainActor.run { self.importProgress = 1.0 }
+
+        let result = ImportResult(
+            sourceType: .videoFile,
+            originalURL: url,
+            processedURL: audioURL,
+            duration: duration
+        )
+
+        await MainActor.run {
+            self.lastImportResult = result
+        }
+
+        return result
+    }
+
     // MARK: - Cleanup
 
     /// インポートファイルを削除
