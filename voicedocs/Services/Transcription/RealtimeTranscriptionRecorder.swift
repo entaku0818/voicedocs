@@ -329,8 +329,14 @@ final class RealtimeTranscriptionRecorder: NSObject, ObservableObject {
     // MARK: - Timer
 
     private func startRecordingTimer() {
-        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            self?.updateRecordingProgress()
+        DispatchQueue.main.async {
+            self.recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+                self?.updateRecordingProgress()
+            }
+            // Ensure timer runs on main RunLoop
+            if let timer = self.recordingTimer {
+                RunLoop.main.add(timer, forMode: .common)
+            }
         }
     }
 
