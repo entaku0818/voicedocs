@@ -7,11 +7,11 @@ import os.log
 
 
 protocol VoiceMemoControllerProtocol {
-    func saveVoiceMemo(id: UUID?, title: String, text: String, filePath: String?)
+    func saveVoiceMemo(id: UUID?, title: String, text: String, filePath: String?, videoFilePath: String?)
     func fetchVoiceMemos() -> [VoiceMemo]
     func fetchVoiceMemo(id: UUID) -> VoiceMemo?
     func deleteVoiceMemo(id: UUID) async -> Bool
-    func updateVoiceMemo(id: UUID, title: String?, text: String?, aiTranscriptionText: String?) -> Bool
+    func updateVoiceMemo(id: UUID, title: String?, text: String?, aiTranscriptionText: String?, videoFilePath: String?) -> Bool
     func getFileSize(filePath: String) -> Int64?
     func getAudioDuration(filePath: String) -> TimeInterval?
     func deleteAudioFile(filePath: String) -> Bool
@@ -74,13 +74,14 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
     }
 
     // 音声メモの保存処理
-    func saveVoiceMemo(id: UUID? = nil, title: String, text: String, filePath: String?) {
+    func saveVoiceMemo(id: UUID? = nil, title: String, text: String, filePath: String?, videoFilePath: String? = nil) {
         let context = container.viewContext
         let voiceMemo = VoiceMemoModel(context: context)
         voiceMemo.id = id ?? UUID() // 指定されたIDを使用、なければ新規生成
         voiceMemo.title = title
         voiceMemo.text = text
         voiceMemo.createdAt = Date()
+        voiceMemo.videoFilePath = videoFilePath
         // voiceFilePathは削除予定のため設定しない
 
         do {
@@ -109,7 +110,10 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                     aiTranscriptionText: memo.aiTranscriptionText ?? "",
                     date: memo.createdAt ?? Date()
                 )
-                
+
+                // 動画ファイルパスを復元
+                voiceMemo.videoFilePath = memo.videoFilePath
+
                 // 文字起こし関連情報を復元
                 if let statusString = memo.transcriptionStatus {
                     voiceMemo.transcriptionStatus = TranscriptionStatus(rawValue: statusString) ?? .none
@@ -117,7 +121,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                 voiceMemo.transcriptionQuality = memo.transcriptionQuality
                 voiceMemo.transcribedAt = memo.transcribedAt
                 voiceMemo.transcriptionError = memo.transcriptionError
-                
+
                 // セグメント情報を復元
                 if let segmentsData = memo.segments {
                     do {
@@ -127,7 +131,7 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                         AppLogger.persistence.error("Failed to decode segments: \(error.localizedDescription)")
                     }
                 }
-                
+
                 return voiceMemo
             }
         } catch {
@@ -169,18 +173,18 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
     }
     
     // 音声メモの更新処理
-    func updateVoiceMemo(id: UUID, title: String?, text: String?, aiTranscriptionText: String? = nil) -> Bool {
+    func updateVoiceMemo(id: UUID, title: String?, text: String?, aiTranscriptionText: String? = nil, videoFilePath: String? = nil) -> Bool {
         let context = container.viewContext
         let fetchRequest: NSFetchRequest<VoiceMemoModel> = VoiceMemoModel.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
-        
+
         do {
             let voiceMemos = try context.fetch(fetchRequest)
             guard let voiceMemo = voiceMemos.first else {
                 AppLogger.persistence.warning("Voice memo not found for update")
                 return false
             }
-            
+
             if let title = title {
                 voiceMemo.title = title
             }
@@ -189,6 +193,9 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
             }
             if let aiTranscriptionText = aiTranscriptionText {
                 voiceMemo.aiTranscriptionText = aiTranscriptionText
+            }
+            if let videoFilePath = videoFilePath {
+                voiceMemo.videoFilePath = videoFilePath
             }
             
             try context.save()

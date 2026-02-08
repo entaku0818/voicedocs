@@ -427,7 +427,12 @@ struct VoiceMemoDetailView: View {
       VStack(alignment: .leading, spacing: 16) {
         // タイトルセクション
         titleSection()
-        
+
+        // 動画プレーヤーセクション（動画がある場合）
+        if store.memo.hasVideo {
+          videoPlayerSection()
+        }
+
         // 統合文字起こし結果セクション
         unifiedTranscriptionSection()
         
@@ -518,7 +523,24 @@ struct VoiceMemoDetailView: View {
     }
     .padding(.top)
   }
-  
+
+  private func videoPlayerSection() -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text("動画")
+        .font(.headline)
+        .foregroundColor(.secondary)
+
+      if let videoURL = store.memo.videoFileURL {
+        CustomVideoPlayerView(videoURL: videoURL)
+      } else {
+        Text("動画ファイルが見つかりません")
+          .foregroundColor(.red)
+          .font(.caption)
+      }
+    }
+    .padding(.vertical, 8)
+  }
+
   private func unifiedTranscriptionSection() -> some View {
     VStack(alignment: .leading, spacing: 12) {
       // セクションヘッダー

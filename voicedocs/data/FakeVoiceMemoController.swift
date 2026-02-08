@@ -28,8 +28,9 @@ class FakeVoiceMemoController: VoiceMemoControllerProtocol {
         voiceMemos.append(memo3)
     }
 
-    func saveVoiceMemo(id: UUID? = nil, title: String, text: String, filePath: String?) {
+    func saveVoiceMemo(id: UUID? = nil, title: String, text: String, filePath: String?, videoFilePath: String? = nil) {
         var newMemo = VoiceMemo(id: id ?? UUID(), title: title, text: text, aiTranscriptionText: "", date: Date())
+        newMemo.videoFilePath = videoFilePath
         newMemo.transcriptionStatus = text.isEmpty ? .none : .completed
         newMemo.transcriptionQuality = text.isEmpty ? 0.0 : 0.8
         newMemo.transcribedAt = text.isEmpty ? nil : Date()
@@ -52,7 +53,7 @@ class FakeVoiceMemoController: VoiceMemoControllerProtocol {
         return false
     }
     
-    func updateVoiceMemo(id: UUID, title: String?, text: String?, aiTranscriptionText: String? = nil) -> Bool {
+    func updateVoiceMemo(id: UUID, title: String?, text: String?, aiTranscriptionText: String? = nil, videoFilePath: String? = nil) -> Bool {
         if let index = voiceMemos.firstIndex(where: { $0.id == id }) {
             var updatedMemo = voiceMemos[index]
             if let title = title {
@@ -63,6 +64,9 @@ class FakeVoiceMemoController: VoiceMemoControllerProtocol {
             }
             if let aiTranscriptionText = aiTranscriptionText {
                 updatedMemo.aiTranscriptionText = aiTranscriptionText
+            }
+            if let videoFilePath = videoFilePath {
+                updatedMemo.videoFilePath = videoFilePath
             }
             voiceMemos[index] = updatedMemo
             return true

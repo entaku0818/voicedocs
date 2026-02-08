@@ -14,7 +14,8 @@ struct VoiceMemo: Equatable {
     var aiTranscriptionText: String = ""  // AI文字起こし（WhisperKit）
     var date: Date
     var segments: [AudioSegment] = []
-    
+    var videoFilePath: String?  // 動画ファイルのパス（動画インポート時のみ）
+
     // 文字起こし関連プロパティ
     var transcriptionStatus: TranscriptionStatus = .none
     var transcriptionQuality: Float = 0.0
@@ -55,5 +56,17 @@ struct VoiceMemo: Equatable {
     // 文字起こし品質のパーセンテージ表示
     var transcriptionQualityPercentage: Int {
         return Int(transcriptionQuality * 100)
+    }
+
+    // 動画ファイルの有無
+    var hasVideo: Bool {
+        return videoFilePath != nil && !(videoFilePath?.isEmpty ?? true)
+    }
+
+    // 動画ファイルのURL
+    var videoFileURL: URL? {
+        guard let path = videoFilePath, !path.isEmpty else { return nil }
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return documentsPath.appendingPathComponent(path)
     }
 }
