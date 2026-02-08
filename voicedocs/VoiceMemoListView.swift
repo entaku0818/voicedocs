@@ -25,6 +25,7 @@ struct VoiceMemoListView: View {
 
     // ファイルインポート関連
     @State private var showingFilePicker = false
+    @State private var showingPhotoPicker = false
     @State private var showingImportResult = false
     @State private var isImporting = false
     @State private var importProgress: Double = 0
@@ -172,17 +173,37 @@ struct VoiceMemoListView: View {
                         .cornerRadius(12)
                     }
 
-                    // ファイルからインポートボタン
-                    Button(action: { showingFilePicker = true }) {
-                        HStack {
-                            Image(systemName: "doc.fill")
-                            Text("ファイル")
+                    // インポートオプション（アイコンベース）
+                    HStack(spacing: 12) {
+                        // ファイルからインポート
+                        Button(action: { showingFilePicker = true }) {
+                            VStack(spacing: 8) {
+                                Image(systemName: "doc.fill")
+                                    .font(.system(size: 28))
+                                Text("ファイル")
+                                    .font(.caption)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.green)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
                         }
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.green)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
+
+                        // 写真ライブラリから動画を選択
+                        Button(action: { showingPhotoPicker = true }) {
+                            VStack(spacing: 8) {
+                                Image(systemName: "photo.on.rectangle")
+                                    .font(.system(size: 28))
+                                Text("写真")
+                                    .font(.caption)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.purple)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
                     }
                 }
                 .padding(.horizontal)
@@ -207,6 +228,11 @@ struct VoiceMemoListView: View {
             }
             .sheet(isPresented: $showingFilePicker) {
                 AudioFilePickerView(isPresented: $showingFilePicker, allowVideoFiles: true) { url in
+                    handleFileSelected(url: url)
+                }
+            }
+            .sheet(isPresented: $showingPhotoPicker) {
+                PhotoVideoPickerView(isPresented: $showingPhotoPicker) { url in
                     handleFileSelected(url: url)
                 }
             }
@@ -281,7 +307,8 @@ struct VoiceMemoListView: View {
     private func createMemoFromImport(result: ImportResult) {
         Task {
             // VoiceMemoを作成
-            let title = "📁 " + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
+            let isVideo = result.sourceType == .videoFile
+            let title = (isVideo ? "🎬 " : "📁 ") + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
 
             do {
                 // 音声ファイルをVoiceRecordingsディレクトリにコピー
@@ -300,9 +327,21 @@ struct VoiceMemoListView: View {
 
                 try FileManager.default.copyItem(at: result.processedURL, to: destURL)
 
+                // 動画ファイルの場合、元の動画ファイルも保存
+                var videoFilePath: String? = nil
+                if isVideo {
+                    let videoFileName = "video-\(memoId.uuidString).\(result.originalURL.pathExtension)"
+                    let videoDestURL = voiceRecordingsPath.appendingPathComponent(videoFileName)
+
+                    // 元の動画ファイルをコピー
+                    if FileManager.default.fileExists(atPath: result.originalURL.path) {
+                        try FileManager.default.copyItem(at: result.originalURL, to: videoDestURL)
+                        videoFilePath = videoFileName
+                    }
+                }
+
                 // メモを保存（VoiceMemoControllerのメソッドを使用）
-                // voiceFilePathは不要（IDから自動解決される）
-                voiceMemoController.saveVoiceMemo(id: memoId, title: title, text: "", filePath: "")
+                voiceMemoController.saveVoiceMemo(id: memoId, title: title, text: "", filePath: "", videoFilePath: videoFilePath)
 
                 // セグメントを追加（音声ファイルの情報）
                 let segment = AudioSegment(

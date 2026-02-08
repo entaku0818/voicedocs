@@ -12,6 +12,8 @@
 	<string>This app needs access to the microphone to record voice memos.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>This app uses speech recognition to transcribe your voice recordings.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to your photo library to import videos for transcription.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
