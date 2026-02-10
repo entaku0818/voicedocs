@@ -333,6 +333,183 @@ class InputSourceManager: ObservableObject {
         return result
     }
 
+    // MARK: - URL Audio Download
+
+    /// URLから音声ファイルをダウンロード
+    func downloadAudioFromURL(_ urlString: String, progressHandler: @escaping (Double) -> Void) async throws -> ImportResult {
+        await MainActor.run {
+            self.isImporting = true
+            self.importProgress = 0
+            self.lastError = nil
+        }
+
+        defer {
+            Task { @MainActor in
+                self.isImporting = false
+            }
+        }
+
+        // URL検証
+        guard let url = URL(string: urlString), url.scheme == "http" || url.scheme == "https" else {
+            let error = "無効なURLです"
+            await MainActor.run { self.lastError = error }
+            throw InputSourceError.downloadFailed(error)
+        }
+
+        await MainActor.run { self.importProgress = 0.05 }
+        progressHandler(0.05)
+
+        // ファイル拡張子を取得（URLパスまたはContent-Typeから）
+        var fileExtension = url.pathExtension.lowercased()
+        if fileExtension.isEmpty || !SupportedAudioFormats.extensions.contains(fileExtension) {
+            // デフォルトでm4aを使用
+            fileExtension = "m4a"
+        }
+
+        // ダウンロード先ファイル名
+        let destFileName = "\(UUID().uuidString).\(fileExtension)"
+        let destURL = importDirectory.appendingPathComponent(destFileName)
+
+        // 既存ファイルがあれば削除
+        if fileManager.fileExists(atPath: destURL.path) {
+            try? fileManager.removeItem(at: destURL)
+        }
+
+        // URLSessionでダウンロード（プログレス付き）
+        let (tempURL, response) = try await downloadWithProgress(from: url, progressHandler: progressHandler)
+
+        // HTTPレスポンス確認
+        if let httpResponse = response as? HTTPURLResponse {
+            guard (200...299).contains(httpResponse.statusCode) else {
+                let error = "サーバーエラー: HTTP \(httpResponse.statusCode)"
+                await MainActor.run { self.lastError = error }
+                throw InputSourceError.downloadFailed(error)
+            }
+
+            // Content-Typeから拡張子を推測
+            if let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type") {
+                let detectedExtension = extensionFromContentType(contentType)
+                if !detectedExtension.isEmpty && detectedExtension != fileExtension {
+                    fileExtension = detectedExtension
+                }
+            }
+        }
+
+        // ファイルを移動
+        let finalFileName = "\(UUID().uuidString).\(fileExtension)"
+        let finalURL = importDirectory.appendingPathComponent(finalFileName)
+
+        do {
+            try fileManager.moveItem(at: tempURL, to: finalURL)
+        } catch {
+            let errorMsg = "ファイルの保存に失敗しました: \(error.localizedDescription)"
+            await MainActor.run { self.lastError = errorMsg }
+            throw InputSourceError.copyFailed(errorMsg)
+        }
+
+        await MainActor.run { self.importProgress = 0.9 }
+        progressHandler(0.9)
+
+        // ダウンロードしたファイルが音声かどうか確認
+        let isValidAudio = await validateAudioFile(at: finalURL)
+        if !isValidAudio {
+            try? fileManager.removeItem(at: finalURL)
+            let error = "ダウンロードしたファイルは有効な音声ファイルではありません"
+            await MainActor.run { self.lastError = error }
+            throw InputSourceError.unsupportedFormat("invalid audio")
+        }
+
+        // 音声の長さを取得
+        let duration = try await getAudioDuration(url: finalURL)
+
+        await MainActor.run { self.importProgress = 1.0 }
+        progressHandler(1.0)
+
+        let result = ImportResult(
+            sourceType: .url,
+            originalURL: url,
+            processedURL: finalURL,
+            duration: duration
+        )
+
+        await MainActor.run {
+            self.lastImportResult = result
+        }
+
+        return result
+    }
+
+    /// URLからダウンロード（プログレス付き）
+    private func downloadWithProgress(from url: URL, progressHandler: @escaping (Double) -> Void) async throws -> (URL, URLResponse) {
+        return try await withCheckedThrowingContinuation { continuation in
+            let task = URLSession.shared.downloadTask(with: url) { tempURL, response, error in
+                if let error = error {
+                    continuation.resume(throwing: InputSourceError.downloadFailed(error.localizedDescription))
+                    return
+                }
+
+                guard let tempURL = tempURL, let response = response else {
+                    continuation.resume(throwing: InputSourceError.downloadFailed("ダウンロードに失敗しました"))
+                    return
+                }
+
+                // 一時ファイルをコピー（ダウンロード完了後すぐ消えるため）
+                let tempCopy = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+                do {
+                    try FileManager.default.copyItem(at: tempURL, to: tempCopy)
+                    continuation.resume(returning: (tempCopy, response))
+                } catch {
+                    continuation.resume(throwing: InputSourceError.copyFailed(error.localizedDescription))
+                }
+            }
+
+            // プログレス観察
+            let observation = task.progress.observe(\.fractionCompleted) { progress, _ in
+                // ダウンロードは全体の80%
+                let downloadProgress = 0.1 + (progress.fractionCompleted * 0.8)
+                progressHandler(downloadProgress)
+                Task { @MainActor in
+                    self.importProgress = downloadProgress
+                }
+            }
+
+            // 観察を保持（タスク完了まで）
+            objc_setAssociatedObject(task, "progressObservation", observation, .OBJC_ASSOCIATION_RETAIN)
+
+            task.resume()
+        }
+    }
+
+    /// Content-Typeから拡張子を推測
+    private func extensionFromContentType(_ contentType: String) -> String {
+        let type = contentType.lowercased()
+        if type.contains("audio/mpeg") || type.contains("audio/mp3") {
+            return "mp3"
+        } else if type.contains("audio/m4a") || type.contains("audio/x-m4a") {
+            return "m4a"
+        } else if type.contains("audio/wav") || type.contains("audio/x-wav") {
+            return "wav"
+        } else if type.contains("audio/aac") {
+            return "aac"
+        } else if type.contains("audio/aiff") {
+            return "aiff"
+        } else if type.contains("audio/mp4") || type.contains("audio/mpeg4") {
+            return "m4a"
+        }
+        return ""
+    }
+
+    /// 音声ファイルの有効性を確認
+    private func validateAudioFile(at url: URL) async -> Bool {
+        let asset = AVURLAsset(url: url)
+        do {
+            let tracks = try await asset.loadTracks(withMediaType: .audio)
+            return !tracks.isEmpty
+        } catch {
+            return false
+        }
+    }
+
     // MARK: - Cleanup
 
     /// インポートファイルを削除

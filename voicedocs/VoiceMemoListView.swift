@@ -26,6 +26,7 @@ struct VoiceMemoListView: View {
     // ファイルインポート関連
     @State private var showingFilePicker = false
     @State private var showingPhotoPicker = false
+    @State private var showingURLInput = false
     @State private var showingImportResult = false
     @State private var isImporting = false
     @State private var importProgress: Double = 0
@@ -159,8 +160,8 @@ struct VoiceMemoListView: View {
 
 
                 // アクションボタン
-                HStack(spacing: 12) {
-                    // 新しい録音ボタン
+                VStack(spacing: 12) {
+                    // 上段：録音ボタン
                     NavigationLink(destination: ContentView()) {
                         HStack {
                             Image(systemName: "mic.fill")
@@ -173,18 +174,18 @@ struct VoiceMemoListView: View {
                         .cornerRadius(12)
                     }
 
-                    // インポートオプション（アイコンベース）
+                    // 下段：インポートオプション（アイコンベース）
                     HStack(spacing: 12) {
                         // ファイルからインポート
                         Button(action: { showingFilePicker = true }) {
-                            VStack(spacing: 8) {
+                            VStack(spacing: 4) {
                                 Image(systemName: "doc.fill")
-                                    .font(.system(size: 28))
+                                    .font(.system(size: 24))
                                 Text("ファイル")
-                                    .font(.caption)
+                                    .font(.caption2)
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
+                            .padding(.vertical, 12)
                             .background(Color.green)
                             .foregroundColor(.white)
                             .cornerRadius(12)
@@ -192,15 +193,30 @@ struct VoiceMemoListView: View {
 
                         // 写真ライブラリから動画を選択
                         Button(action: { showingPhotoPicker = true }) {
-                            VStack(spacing: 8) {
+                            VStack(spacing: 4) {
                                 Image(systemName: "photo.on.rectangle")
-                                    .font(.system(size: 28))
+                                    .font(.system(size: 24))
                                 Text("写真")
-                                    .font(.caption)
+                                    .font(.caption2)
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
+                            .padding(.vertical, 12)
                             .background(Color.purple)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+
+                        // URLから音声を取得
+                        Button(action: { showingURLInput = true }) {
+                            VStack(spacing: 4) {
+                                Image(systemName: "link")
+                                    .font(.system(size: 24))
+                                Text("URL")
+                                    .font(.caption2)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.orange)
                             .foregroundColor(.white)
                             .cornerRadius(12)
                         }
@@ -234,6 +250,11 @@ struct VoiceMemoListView: View {
             .sheet(isPresented: $showingPhotoPicker) {
                 PhotoVideoPickerView(isPresented: $showingPhotoPicker) { url in
                     handleFileSelected(url: url)
+                }
+            }
+            .sheet(isPresented: $showingURLInput) {
+                URLAudioInputView(isPresented: $showingURLInput) { result in
+                    handleURLImportResult(result: result)
                 }
             }
             .sheet(isPresented: $showingImportResult) {
@@ -304,11 +325,25 @@ struct VoiceMemoListView: View {
         }
     }
 
+    private func handleURLImportResult(result: ImportResult) {
+        // URLインポートの場合、結果シートを表示
+        importResult = result
+        showingImportResult = true
+    }
+
     private func createMemoFromImport(result: ImportResult) {
         Task {
-            // VoiceMemoを作成
-            let isVideo = result.sourceType == .videoFile
-            let title = (isVideo ? "🎬 " : "📁 ") + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
+            // VoiceMemoを作成（ソースタイプに応じたアイコン）
+            let titlePrefix: String
+            switch result.sourceType {
+            case .videoFile:
+                titlePrefix = "🎬 "
+            case .url:
+                titlePrefix = "🔗 "
+            default:
+                titlePrefix = "📁 "
+            }
+            let title = titlePrefix + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
 
             do {
                 // 音声ファイルをVoiceRecordingsディレクトリにコピー
@@ -329,7 +364,7 @@ struct VoiceMemoListView: View {
 
                 // 動画ファイルの場合、元の動画ファイルも保存
                 var videoFilePath: String? = nil
-                if isVideo {
+                if result.sourceType == .videoFile {
                     let videoFileName = "video-\(memoId.uuidString).\(result.originalURL.pathExtension)"
                     let videoDestURL = voiceRecordingsPath.appendingPathComponent(videoFileName)
 
