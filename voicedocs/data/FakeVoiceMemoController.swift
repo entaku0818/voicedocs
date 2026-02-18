@@ -117,7 +117,20 @@ class FakeVoiceMemoController: VoiceMemoControllerProtocol {
     func generateSegmentFilePath(memoId: UUID, segmentIndex: Int) -> String {
         return "/fake/path/\(memoId.uuidString)_segment\(segmentIndex).m4a"
     }
-    
+
+    func concatenateSegments(memoId: UUID) async throws -> URL {
+        // テスト用のダミー実装
+        let segments = getSegmentsForMemo(memoId: memoId)
+        guard !segments.isEmpty else {
+            throw AudioConcatenationService.ConcatenationError.noSegments
+        }
+
+        // ダミーのtemporary URLを返す
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileName = "concatenated_\(memoId.uuidString).m4a"
+        return tempDir.appendingPathComponent(fileName)
+    }
+
     // MARK: - 文字起こし関連機能
     
     func updateTranscriptionStatus(memoId: UUID, status: TranscriptionStatus) -> Bool {

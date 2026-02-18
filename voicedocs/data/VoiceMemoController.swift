@@ -21,6 +21,7 @@ protocol VoiceMemoControllerProtocol {
     func removeSegmentFromMemo(memoId: UUID, segmentId: UUID) -> Bool
     func getSegmentsForMemo(memoId: UUID) -> [AudioSegment]
     func generateSegmentFilePath(memoId: UUID, segmentIndex: Int) -> String
+    func concatenateSegments(memoId: UUID) async throws -> URL
     
     // 文字起こし関連機能
     func updateTranscriptionStatus(memoId: UUID, status: TranscriptionStatus) -> Bool
@@ -386,14 +387,29 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
     func generateSegmentFilePath(memoId: UUID, segmentIndex: Int) -> String {
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let voiceRecordingsPath = documentsPath.appendingPathComponent("VoiceRecordings")
-        
+
         // ディレクトリが存在しない場合は作成
         if !FileManager.default.fileExists(atPath: voiceRecordingsPath.path) {
             try? FileManager.default.createDirectory(at: voiceRecordingsPath, withIntermediateDirectories: true, attributes: nil)
         }
-        
+
         let segmentFileName = "\(memoId.uuidString)_segment\(segmentIndex).m4a"
         return voiceRecordingsPath.appendingPathComponent(segmentFileName).path
+    }
+
+    // セグメントを連結して1つのファイルを作成
+    func concatenateSegments(memoId: UUID) async throws -> URL {
+        let segments = getSegmentsForMemo(memoId: memoId)
+
+        // セグメントが存在しない場合はエラー
+        guard !segments.isEmpty else {
+            throw AudioConcatenationService.ConcatenationError.noSegments
+        }
+
+        // AudioConcatenationServiceを使用して連結
+        let service = await AudioConcatenationService()
+        let outputFileName = "concatenated_\(memoId.uuidString).m4a"
+        return try await service.concatenateSegments(segments, outputFileName: outputFileName)
     }
     
     // セグメントファイルパスを更新するヘルパーメソッド

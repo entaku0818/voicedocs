@@ -23,7 +23,11 @@ struct VoiceMemoDetailFeature {
                    lhs.backgroundTranscriptionState == rhs.backgroundTranscriptionState &&
                    lhs.backgroundProgress == rhs.backgroundProgress &&
                    lhs.additionalRecorderState == rhs.additionalRecorderState &&
-                   lhs.playbackProgress == rhs.playbackProgress
+                   lhs.playbackProgress == rhs.playbackProgress &&
+                   lhs.isConcatenating == rhs.isConcatenating &&
+                   lhs.concatenationProgress == rhs.concatenationProgress &&
+                   lhs.concatenatedAudioURL == rhs.concatenatedAudioURL &&
+                   lhs.concatenationError == rhs.concatenationError
         }
 
     var memo: VoiceMemo
@@ -48,7 +52,11 @@ struct VoiceMemoDetailFeature {
     )
     var additionalRecorderState: AdditionalRecorderState = AdditionalRecorderState()
     var playbackProgress: PlaybackProgress? = nil
-    
+    var isConcatenating = false
+    var concatenationProgress: Double = 0
+    var concatenatedAudioURL: URL? = nil
+    var concatenationError: String? = nil
+
     init(memo: VoiceMemo) {
       self.memo = memo
       self.editedTitle = memo.title
@@ -104,6 +112,9 @@ struct VoiceMemoDetailFeature {
     case fillerWordResultReceived(FillerWordRemovalResult?)
     case memoUpdated(VoiceMemo)
     case playbackProgressUpdated(PlaybackProgress)
+    case concatenationProgressUpdated(Double)
+    case concatenationCompleted(URL)
+    case concatenationFailed(String)
     case view(View)
 
     enum View {
@@ -121,6 +132,7 @@ struct VoiceMemoDetailFeature {
       case shareButtonTapped
       case previewFillerWordRemoval
       case applyFillerWordRemoval
+      case startConcatenation
     }
   }
 
@@ -296,8 +308,39 @@ struct VoiceMemoDetailFeature {
               await send(.memoUpdated(updatedMemo ?? memo))
             }
           }
-          
+
+        case .startConcatenation:
+          state.isConcatenating = true
+          state.concatenationProgress = 0
+          state.concatenationError = nil
+          return .run { [memoId = state.memo.id] send in
+            // 進捗監視タスクを開始
+            let service = await AudioConcatenationService()
+            let progressTask = Task {
+              while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒
+                let progress = await MainActor.run { service.progress }
+                await send(.concatenationProgressUpdated(progress))
+
+                if progress >= 1.0 {
+                  break
+                }
+              }
+            }
+
+            // セグメント連結を実行
+            do {
+              let outputURL = try await voiceMemoController.concatenateSegments(memoId: memoId)
+              progressTask.cancel()
+              await send(.concatenationCompleted(outputURL))
+            } catch {
+              progressTask.cancel()
+              await send(.concatenationFailed(error.localizedDescription))
+            }
+          }
+
         }
+
         
       case let .transcriptionCompleted(text):
         state.transcription = text
@@ -349,6 +392,23 @@ struct VoiceMemoDetailFeature {
         if progress.currentTime == 0 && progress.duration == 0 {
           state.isPlaying = false
         }
+        return .none
+
+      case let .concatenationProgressUpdated(progress):
+        state.concatenationProgress = progress
+        return .none
+
+      case let .concatenationCompleted(url):
+        state.isConcatenating = false
+        state.concatenationProgress = 1.0
+        state.concatenatedAudioURL = url
+        state.concatenationError = nil
+        return .none
+
+      case let .concatenationFailed(error):
+        state.isConcatenating = false
+        state.concatenationProgress = 0
+        state.concatenationError = error
         return .none
       }
     }
@@ -676,6 +736,73 @@ struct VoiceMemoDetailView: View {
       Text("合計時間: \(formatDuration(store.memo.totalDuration))")
         .font(.caption)
         .foregroundColor(.secondary)
+
+      // 連結機能（セグメントが2つ以上ある場合のみ表示）
+      if store.memo.segments.count >= 2 {
+        Divider()
+          .padding(.vertical, 8)
+
+        if store.isConcatenating {
+          // 連結中: 進捗バー表示
+          VStack(alignment: .leading, spacing: 8) {
+            HStack {
+              Text("セグメントを連結中...")
+                .font(.subheadline)
+              Spacer()
+              Text("\(Int(store.concatenationProgress * 100))%")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+            ProgressView(value: store.concatenationProgress)
+              .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+          }
+          .padding()
+          .background(Color(.systemGray6))
+          .cornerRadius(8)
+        } else if let _ = store.concatenatedAudioURL {
+          // 連結完了: 成功メッセージ
+          HStack {
+            Image(systemName: "checkmark.circle.fill")
+              .foregroundColor(.green)
+            Text("連結完了")
+              .font(.subheadline)
+          }
+          .padding()
+          .background(Color(.systemGray6))
+          .cornerRadius(8)
+        } else if let error = store.concatenationError {
+          // エラー: エラーメッセージ
+          VStack(alignment: .leading, spacing: 4) {
+            HStack {
+              Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(.orange)
+              Text("連結エラー")
+                .font(.subheadline)
+            }
+            Text(error)
+              .font(.caption)
+              .foregroundColor(.secondary)
+          }
+          .padding()
+          .background(Color(.systemGray6))
+          .cornerRadius(8)
+        } else {
+          // 連結ボタン
+          Button {
+            send(.startConcatenation)
+          } label: {
+            HStack {
+              Image(systemName: "link")
+              Text("セグメントを連結")
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Color.blue)
+            .foregroundColor(.white)
+            .cornerRadius(8)
+          }
+        }
+      }
     }
   }
   
@@ -785,7 +912,7 @@ struct VoiceMemoDetailView: View {
   
   private func createShareItems() -> [Any] {
     var items: [Any] = []
-    
+
     let textContent = """
     タイトル: \(store.editedTitle)
     作成日時: \(formatDate(store.memo.date))
@@ -794,15 +921,22 @@ struct VoiceMemoDetailView: View {
     \(store.transcription)
     """
     items.append(textContent)
-    
-    let filePath = getFilePath(for: store.memo.id)
-    if !filePath.isEmpty {
-      let fileURL = URL(fileURLWithPath: filePath)
-      if FileManager.default.fileExists(atPath: filePath) {
-        items.append(fileURL)
+
+    // 連結ファイルが存在する場合は優先的に共有
+    if let concatenatedURL = store.concatenatedAudioURL,
+       FileManager.default.fileExists(atPath: concatenatedURL.path) {
+      items.append(concatenatedURL)
+    } else {
+      // 連結ファイルがない場合は個別セグメントファイルを共有
+      let filePath = getFilePath(for: store.memo.id)
+      if !filePath.isEmpty {
+        let fileURL = URL(fileURLWithPath: filePath)
+        if FileManager.default.fileExists(atPath: filePath) {
+          items.append(fileURL)
+        }
       }
     }
-    
+
     return items
   }
   
