@@ -67,6 +67,6 @@ struct VoiceMemo: Equatable {
     var videoFileURL: URL? {
         guard let path = videoFilePath, !path.isEmpty else { return nil }
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return documentsPath.appendingPathComponent(path)
+        return documentsPath.appendingPathComponent("VoiceRecordings").appendingPathComponent(path)
     }
 }
