@@ -1,6 +1,6 @@
 ---
 name: test-run
-description: VoiceDocs プロジェクトのユニットテストとUIテストを実行します。iPhone 16シミュレータ（iOS 18.2）でテストを実行し、結果をフィルタして表示します。Use when テスト実行、テスト確認、ユニットテスト、UIテスト、テスト失敗。
+description: VoiceDocs プロジェクトのユニットテストとUIテストを実行します。iPhone 17シミュレータ（iOS 26.1）でテストを実行し、結果をフィルタして表示します。Use when テスト実行、テスト確認、ユニットテスト、UIテスト、テスト失敗。
 ---
 
 # Test Run Skill
@@ -16,12 +16,12 @@ xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace \
   -scheme voicedocs \
   -configuration Debug \
   test \
-  -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2' \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1' \
   2>&1 | grep -E "(Testing completed|BUILD SUCCEEDED|BUILD FAILED|PASSED|FAILED|All tests|Executed.*tests|Test Suite)"
 ```
 
 **ポイント:**
-- iPhone 16 (iOS 18.2)をプライマリテストターゲットとして使用
+- iPhone 17 (iOS 26.1)をプライマリテストターゲットとして使用
 - フィルタでテスト結果のサマリーのみ表示
 
 ### Step 2: テスト結果の分析
@@ -48,7 +48,7 @@ xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace \
   -scheme voicedocs \
   -configuration Debug \
   test \
-  -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2' \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1' \
   2>&1 | tail -10
 ```
 
@@ -81,7 +81,7 @@ Claude: [全テスト実行 → 失敗があればコード変更箇所と照ら
 ## トラブルシューティング
 
 ### エラー: "Unable to find a destination"
-**原因**: iPhone 16 (iOS 18.2) シミュレータが存在しない
+**原因**: iPhone 17 (iOS 26.1) シミュレータが存在しない
 **解決方法**: 利用可能なシミュレータを確認して変更
 ```bash
 xcrun simctl list devices available
@@ -91,7 +91,7 @@ xcrun simctl list devices available
 **原因**: UIテストでシミュレータ起動が遅い
 **解決方法**: シミュレータを事前起動
 ```bash
-xcrun simctl boot "iPhone 16"
+xcrun simctl boot "iPhone 17"
 ```
 
 ### テストが一部スキップされる
@@ -108,16 +108,16 @@ xcrun simctl boot "iPhone 16"
 
 ```bash
 # フルテスト実行（全出力）
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2'
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1'
 
 # テスト結果のみ表示
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2' 2>&1 | grep -E "(Testing completed|BUILD SUCCEEDED|BUILD FAILED|PASSED|FAILED|All tests|Executed.*tests|Test Suite)"
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1' 2>&1 | grep -E "(Testing completed|BUILD SUCCEEDED|BUILD FAILED|PASSED|FAILED|All tests|Executed.*tests|Test Suite)"
 
 # 最後の10行のみ確認
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2' 2>&1 | tail -10
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1' 2>&1 | tail -10
 
 # ビルドのみ（テスト実行なし）
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug build-for-testing -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2'
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug build-for-testing -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1'
 
 # 利用可能なシミュレータ確認
 xcrun simctl list devices available

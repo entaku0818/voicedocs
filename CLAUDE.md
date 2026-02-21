@@ -38,24 +38,24 @@ xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs 
 
 ```bash
 # Run all tests with specific simulator
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2'
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1'
 
 # Run tests with result filtering
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2' 2>&1 | grep -E "(Testing completed|BUILD SUCCEEDED|BUILD FAILED|PASSED|FAILED|All tests|Executed.*tests|Test Suite)"
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1' 2>&1 | grep -E "(Testing completed|BUILD SUCCEEDED|BUILD FAILED|PASSED|FAILED|All tests|Executed.*tests|Test Suite)"
 
 # Quick test status check
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2' 2>&1 | tail -10
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1' 2>&1 | tail -10
 
 # Available simulators
 xcrun simctl list devices available
 
 # Build for testing only (faster)
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug build-for-testing -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2'
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug build-for-testing -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1'
 ```
 
 **IMPORTANT**: 
 - Always run tests before committing code changes to ensure compilation and functionality
-- Use iPhone 16 simulator (iOS 18.2) as the primary test target
+- Use iPhone 17 simulator (iOS 26.1) as the primary test target
 - Build failures often indicate macro or dependency issues that need resolution
 
 ### Development Schemes
