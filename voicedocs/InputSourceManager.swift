@@ -333,6 +333,91 @@ class InputSourceManager: ObservableObject {
         return result
     }
 
+    // MARK: - URL Download
+
+    /// URLから音声ファイルをダウンロードしてインポート
+    func downloadAudioFromURL(_ urlString: String) async throws -> ImportResult {
+        await MainActor.run {
+            self.isImporting = true
+            self.importProgress = 0
+            self.lastError = nil
+        }
+
+        defer {
+            Task { @MainActor in
+                self.isImporting = false
+            }
+        }
+
+        // URLバリデーション
+        guard let url = URL(string: urlString),
+              let scheme = url.scheme,
+              (scheme == "http" || scheme == "https") else {
+            let error = "無効なURLです。http://またはhttps://で始まるURLを入力してください"
+            await MainActor.run { self.lastError = error }
+            throw InputSourceError.downloadFailed("Invalid URL: \(urlString)")
+        }
+
+        await MainActor.run { self.importProgress = 0.1 }
+
+        // ダウンロード実行
+        let (tempURL, response): (URL, URLResponse)
+        do {
+            (tempURL, response) = try await URLSession.shared.download(from: url)
+        } catch {
+            let errorMsg = "ダウンロードに失敗しました: \(error.localizedDescription)"
+            await MainActor.run { self.lastError = errorMsg }
+            throw InputSourceError.downloadFailed(errorMsg)
+        }
+
+        await MainActor.run { self.importProgress = 0.6 }
+
+        // ファイル名を決定
+        let fileName: String
+        if let suggestedName = response.suggestedFilename, !suggestedName.isEmpty {
+            fileName = suggestedName
+        } else if !url.lastPathComponent.isEmpty {
+            fileName = url.lastPathComponent
+        } else {
+            fileName = "\(UUID().uuidString).mp3"
+        }
+
+        // インポートディレクトリへ移動
+        let destFileName = "\(UUID().uuidString)_\(fileName)"
+        let destURL = importDirectory.appendingPathComponent(destFileName)
+
+        do {
+            if fileManager.fileExists(atPath: destURL.path) {
+                try fileManager.removeItem(at: destURL)
+            }
+            try fileManager.moveItem(at: tempURL, to: destURL)
+        } catch {
+            let errorMsg = "ファイルの保存に失敗しました: \(error.localizedDescription)"
+            await MainActor.run { self.lastError = errorMsg }
+            throw InputSourceError.downloadFailed(errorMsg)
+        }
+
+        await MainActor.run { self.importProgress = 0.8 }
+
+        // 音声の長さを取得（失敗しても続行）
+        let duration = try? await getAudioDuration(url: destURL)
+
+        await MainActor.run { self.importProgress = 1.0 }
+
+        let result = ImportResult(
+            sourceType: .url,
+            originalURL: url,
+            processedURL: destURL,
+            duration: duration
+        )
+
+        await MainActor.run {
+            self.lastImportResult = result
+        }
+
+        return result
+    }
+
     // MARK: - Cleanup
 
     /// インポートファイルを削除

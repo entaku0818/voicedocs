@@ -26,6 +26,7 @@ struct VoiceMemoListView: View {
     // ファイルインポート関連
     @State private var showingFilePicker = false
     @State private var showingPhotoPicker = false
+    @State private var showingURLInput = false
     @State private var showingImportResult = false
     @State private var isImporting = false
     @State private var importProgress: Double = 0
@@ -204,6 +205,21 @@ struct VoiceMemoListView: View {
                             .foregroundColor(.white)
                             .cornerRadius(12)
                         }
+
+                        // URLから取得
+                        Button(action: { showingURLInput = true }) {
+                            VStack(spacing: 8) {
+                                Image(systemName: "link")
+                                    .font(.system(size: 28))
+                                Text("URL")
+                                    .font(.caption)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.orange)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
                     }
                 }
                 .padding(.horizontal)
@@ -234,6 +250,11 @@ struct VoiceMemoListView: View {
             .sheet(isPresented: $showingPhotoPicker) {
                 PhotoVideoPickerView(isPresented: $showingPhotoPicker) { url in
                     handleFileSelected(url: url)
+                }
+            }
+            .sheet(isPresented: $showingURLInput) {
+                URLInputView(isPresented: $showingURLInput) { urlString in
+                    handleURLSubmitted(urlString: urlString)
                 }
             }
             .sheet(isPresented: $showingImportResult) {
@@ -304,11 +325,38 @@ struct VoiceMemoListView: View {
         }
     }
 
+    private func handleURLSubmitted(urlString: String) {
+        isImporting = true
+        importProgress = 0
+
+        Task {
+            do {
+                let result = try await inputSourceManager.downloadAudioFromURL(urlString)
+                await MainActor.run {
+                    isImporting = false
+                    importResult = result
+                    showingImportResult = true
+                }
+            } catch {
+                await MainActor.run {
+                    isImporting = false
+                    importError = error.localizedDescription
+                }
+            }
+        }
+    }
+
     private func createMemoFromImport(result: ImportResult) {
         Task {
             // VoiceMemoを作成
             let isVideo = result.sourceType == .videoFile
-            let title = (isVideo ? "🎬 " : "📁 ") + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
+            let prefix: String
+            switch result.sourceType {
+            case .videoFile: prefix = "🎬 "
+            case .url: prefix = "🔗 "
+            default: prefix = "📁 "
+            }
+            let title = prefix + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
 
             do {
                 // 音声ファイルをVoiceRecordingsディレクトリにコピー
