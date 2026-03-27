@@ -16,3 +16,4 @@ fastlane/api_key.json
 
 # Build artifacts
 build/
+firebase-debug.log
