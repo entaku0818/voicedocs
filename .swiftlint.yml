@@ -1,0 +1,58 @@
+# SwiftLint configuration for VoiceDocs
+# Policy: errors block CI, warnings are informational.
+# Thresholds are lenient for existing code; tighten gradually.
+
+included:
+  - voicedocs
+  - voicedocsTests
+  - voicedocsUITests
+
+excluded:
+  - build
+  - DerivedData
+
+disabled_rules:
+  - line_length
+  - identifier_name
+  - trailing_whitespace
+  - todo
+  - opening_brace
+  - statement_position
+
+# Xcode-generated test classes use lowercase names
+type_name:
+  excluded:
+    - voicedocsTests
+    - voicedocsUITests
+    - voicedocsUITestsLaunchTests
+
+force_cast: warning
+force_try: warning
+
+large_tuple:
+  warning: 3
+  error: 6
+
+function_body_length:
+  warning: 120
+  error: 400
+
+type_body_length:
+  warning: 500
+  error: 1500
+
+file_length:
+  warning: 1200
+  error: 3000
+
+cyclomatic_complexity:
+  warning: 25
+  error: 60
+
+function_parameter_count:
+  warning: 8
+  error: 15
+
+nesting:
+  type_level:
+    warning: 3

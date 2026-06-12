@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: SwiftLint
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/realm/swiftlint:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run SwiftLint
+        run: swiftlint lint --reporter github-actions-logging
+
+  build-and-test:
+    name: Build & Unit Tests (iOS Simulator)
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select latest Xcode 26
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -n 1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: DerivedData/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('voicedocs.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Pick simulator
+        id: sim
+        run: |
+          LIST=$(xcrun simctl list devices available)
+          DEVICE=$(echo "$LIST" | grep -oE "iPhone 17( Pro( Max)?)?" | head -n 1)
+          if [ -z "$DEVICE" ]; then
+            DEVICE=$(echo "$LIST" | grep -oE "iPhone [0-9]+[^(]*" | head -n 1 | xargs)
+          fi
+          echo "Using simulator: $DEVICE"
+          echo "device=$DEVICE" >> "$GITHUB_OUTPUT"
+
+      - name: Build for testing
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace voicedocs.xcodeproj/project.xcworkspace \
+            -scheme voicedocs \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.device }}" \
+            -derivedDataPath DerivedData \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            build-for-testing
+
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace voicedocs.xcodeproj/project.xcworkspace \
+            -scheme voicedocs \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.device }}" \
+            -derivedDataPath DerivedData \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            -only-testing:voicedocsTests \
+            test-without-building
