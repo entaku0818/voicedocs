@@ -17,3 +17,7 @@ fastlane/api_key.json
 # Build artifacts
 build/
 firebase-debug.log
+
+# AI tool artifacts (AGENTS.md is an auto-generated copy of CLAUDE.md)
+.agents/
+AGENTS.md
