@@ -1,1 +1,1 @@
-Recording,Transcription,Record,Background,Karaoke,Radio,Sleep,Talk,Mic,Conversion,capture,extraction
+AI notes,summary,transcript,meeting,recorder,voice memo,dictation,interview,lecture,speech to text

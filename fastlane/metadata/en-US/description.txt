@@ -1,17 +1,29 @@
-Transcribe is an app that leverages high-precision AI technology to quickly and accurately convert speech into text. It allows you to easily manage and share audio data from meetings, interviews, lectures, notes, and more.
+Transcribe turns your recordings into text right away. And with the new AI Notes feature, it turns that text into a summary and a list of action items.
 
-Key Features
+■ AI Notes
+Create a summary and action items from your transcript with a single tap.
+- AI Notes are generated entirely on your device. Your audio and transcript are not sent to a server to be summarized
+- No account required. No extra charge
+* AI Notes require a device that supports Apple Intelligence. On unsupported devices, the app tells you so instead of failing silently
 
-Real-Time Transcription: Converts speech to text in real-time and displays it instantly.
-High-Accuracy Speech Recognition: Utilizes the latest AI technology to achieve high-accuracy speech recognition.
-Multilingual Support: Supports multiple languages including Japanese, English, Chinese, and many others.
-Recommended For
+■ Features
+- Real-time transcription: see the text appear while you record
+- Transcribe after recording: convert long recordings with a progress indicator, and pause or resume anytime
+- AI Notes: pull out a summary and action items automatically
+- Import files: transcribe audio files, video files, or a URL from your device
+- Append recordings: record more later and merge it into a single file
+- Copy and share: copy the transcript with one tap, or share the text and the audio file together
 
-Business professionals looking to efficiently record meetings and interviews.
-Students who want to easily record lecture and seminar content.
-Anyone who wants to save the hassle of taking notes.
-With Simple Transcribe, effortlessly convert speech to text and enhance your daily tasks!
+■ Languages
+Transcription currently supports Japanese.
 
+■ Who it's for
+- Anyone who needs a record of meetings and calls
+- Journalists and researchers turning interviews into text
+- Students reviewing lectures and seminars
+- Anyone who prefers to capture ideas by voice
 
-
-
+■ Good to know
+- Your recordings are stored on your device
+- Transcription uses Apple's speech recognition
+- The app shows ads
