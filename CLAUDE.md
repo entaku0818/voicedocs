@@ -19,16 +19,17 @@ claude --dangerously-skip-permissions
 ```bash
 # Build the project (ALWAYS RUN THIS AFTER MAKING CODE CHANGES)
 # Note: -skipMacroValidation is required for ComposableArchitecture macros to work correctly
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' -skipMacroValidation build
+# Note: 'generic/platform=iOS Simulator' は特定機種名に依存しないため、手元のシミュレータ構成が
+#       変わっても壊れない。機種名を直書きすると Xcode 更新のたびに destination not found で落ちる。
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -destination 'generic/platform=iOS Simulator' -skipMacroValidation build
 
 # Quick build check with filtered output
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' -skipMacroValidation build 2>&1 | grep -E "(error:|warning:|FAILED|SUCCEEDED)"
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -destination 'generic/platform=iOS Simulator' -skipMacroValidation build 2>&1 | grep -E "(error:|warning:|FAILED|SUCCEEDED)"
 
 # Build for testing
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' -skipMacroValidation build-for-testing
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -destination 'generic/platform=iOS Simulator' -skipMacroValidation build-for-testing
 
-# Run tests
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test
+# Run tests → 「Testing」セクション参照（テストは実機シミュレータの指定が必要）
 
 # Legacy build command (deprecated - use destination-based build above)
 # xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -sdk iphonesimulator -arch arm64 build CODE_SIGNING_ALLOWED=NO
@@ -37,25 +38,25 @@ xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs 
 ### Testing
 
 ```bash
-# Run all tests with specific simulator
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1'
-
-# Run tests with result filtering
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1' 2>&1 | grep -E "(Testing completed|BUILD SUCCEEDED|BUILD FAILED|PASSED|FAILED|All tests|Executed.*tests|Test Suite)"
-
-# Quick test status check
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1' 2>&1 | tail -10
-
-# Available simulators
+# まず利用可能な destination を確認する（機種名・OSバージョンはマシンごとに違う）
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -showdestinations
 xcrun simctl list devices available
 
+# ユニットテストを実行（上で確認した実在の機種名に置き換えて使うこと）
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -skipMacroValidation -only-testing:voicedocsTests
+
+# Run tests with result filtering
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -skipMacroValidation -only-testing:voicedocsTests 2>&1 | grep -E "(Testing completed|BUILD SUCCEEDED|BUILD FAILED|Test case.*(passed|failed)|TEST SUCCEEDED|TEST FAILED)"
+
 # Build for testing only (faster)
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug build-for-testing -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1'
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug build-for-testing -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -skipMacroValidation
 ```
 
-**IMPORTANT**: 
+**IMPORTANT**:
 - Always run tests before committing code changes to ensure compilation and functionality
-- Use iPhone 17 simulator (iOS 26.1) as the primary test target
+- **destination に機種名を直書きしない。** 手元に無い機種を指すと `Unable to find a device matching the provided destination specifier` で即死する。必ず `-showdestinations` で実在を確認してから指定すること
+- **`-only-testing:voicedocsTests` を付けてユニットテストだけを回す。** `voicedocsUITests` は `Failed to launch app` で完走しない既知の問題があり、緑判定の対象外（issue #31）
+- テスト実行自体がシミュレータ側の事情で停滞することがある。停まったら `xcrun simctl shutdown all` してから再実行する（issue #31）
 - Build failures often indicate macro or dependency issues that need resolution
 
 ### Development Schemes
@@ -250,7 +251,7 @@ source fastlane/.env.default && fastlane upload_metadata
 After implementing any feature or fixing any issue, ALWAYS run:
 
 ```bash
-xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -sdk iphonesimulator -arch arm64 build CODE_SIGNING_ALLOWED=NO | grep -E "(error:|warning:|FAILED|SUCCEEDED)"
+xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -destination 'generic/platform=iOS Simulator' -skipMacroValidation build 2>&1 | grep -E "(error:|warning:|FAILED|SUCCEEDED)"
 ```
 
 This ensures all code changes compile successfully before marking tasks as complete.
@@ -317,7 +318,12 @@ This architecture allows users to benefit from immediate feedback during recordi
 - 提案がある場合は実装せず、issue コメントか報告として出す
 
 ### ハーネス（検証ゲート）
-- 実装は build / test / lint が緑になるまで自己修正する（コマンド: `xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' -skipMacroValidation build`（ビルド）/ `xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1'`（テスト）。lint コマンドは検証手段なし・要整備）
+- 実装は build / test / lint が緑になるまで自己修正する。3つのコマンドは以下:
+  - ビルド: `xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug -destination 'generic/platform=iOS Simulator' -skipMacroValidation build`
+  - テスト: `xcodebuild -workspace voicedocs.xcodeproj/project.xcworkspace -scheme voicedocs -configuration Debug test -destination 'platform=iOS Simulator,name=<-showdestinations で確認した実在機種>' -skipMacroValidation -only-testing:voicedocsTests`
+  - lint: `swiftlint lint --quiet`（error 0件が条件。warning は現状77件あり、増やさないこと）
+- **destination に機種名を直書きしない。** 手元に無い機種を指すと即エラーで落ちる。テストは `-showdestinations` で実在を確認してから指定する
+- **UIテスト（`voicedocsUITests`）は緑判定の対象外**。`Failed to launch app` で完走しない既知の問題（issue #31）。必ず `-only-testing:voicedocsTests` を付ける
 - **緑でない変更を main に入れない**。5回で緑にならなければブランチに残して報告
 - 完了報告には実行した検証コマンドと実出力を含める（「たぶん動く」は完了ではない）
 
