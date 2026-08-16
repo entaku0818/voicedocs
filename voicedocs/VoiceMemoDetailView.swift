@@ -27,7 +27,8 @@ struct VoiceMemoDetailFeature {
                    lhs.isConcatenating == rhs.isConcatenating &&
                    lhs.concatenationProgress == rhs.concatenationProgress &&
                    lhs.concatenatedAudioURL == rhs.concatenatedAudioURL &&
-                   lhs.concatenationError == rhs.concatenationError
+                   lhs.concatenationError == rhs.concatenationError &&
+                   lhs.aiNote == rhs.aiNote
         }
 
     var memo: VoiceMemo
@@ -56,12 +57,17 @@ struct VoiceMemoDetailFeature {
     var concatenationProgress: Double = 0
     var concatenatedAudioURL: URL? = nil
     var concatenationError: String? = nil
+    var aiNote = AINoteFeature.State()
 
     init(memo: VoiceMemo) {
       self.memo = memo
       self.editedTitle = memo.title
       self.editedText = memo.text
       self.transcription = memo.text.isEmpty ? "文字起こしを開始するには、以下のボタンを押してください。" : memo.text
+      self.aiNote = AINoteFeature.State(
+        transcriptionText: memo.text,
+        savedNoteText: memo.aiTranscriptionText
+      )
     }
   }
   
@@ -115,6 +121,7 @@ struct VoiceMemoDetailFeature {
     case concatenationProgressUpdated(Double)
     case concatenationCompleted(URL)
     case concatenationFailed(String)
+    case aiNote(AINoteFeature.Action)
     case view(View)
 
     enum View {
@@ -144,6 +151,9 @@ struct VoiceMemoDetailFeature {
 
   var body: some Reducer<State, Action> {
     BindingReducer()
+    Scope(state: \.aiNote, action: \.aiNote) {
+      AINoteFeature()
+    }
     Reduce { state, action in
       switch action {
       case .binding:
@@ -345,6 +355,7 @@ struct VoiceMemoDetailFeature {
       case let .transcriptionCompleted(text):
         state.transcription = text
         state.isTranscribing = false
+        state.aiNote.transcriptionText = text
         // 文字起こし結果をtextフィールドに保存
         return .run { [memo = state.memo, title = state.editedTitle] send in
           let success = voiceMemoController.updateVoiceMemo(
@@ -385,6 +396,27 @@ struct VoiceMemoDetailFeature {
         
       case let .memoUpdated(memo):
         state.memo = memo
+        state.aiNote.transcriptionText = memo.text
+        state.aiNote.savedNoteText = memo.aiTranscriptionText
+        return .none
+
+      // AIノートの保存結果を Core Data の aiTranscriptionText に永続化する。
+      // 既存の text / title は触らないので、保存済みの文字起こしは壊れない。
+      case let .aiNote(.delegate(.saved(noteText))):
+        return .run { [memo = state.memo] send in
+          let success = voiceMemoController.updateVoiceMemo(
+            id: memo.id,
+            title: nil,
+            text: nil,
+            aiTranscriptionText: noteText
+          )
+          if success {
+            let updatedMemo = voiceMemoController.fetchVoiceMemo(id: memo.id)
+            await send(.memoUpdated(updatedMemo ?? memo))
+          }
+        }
+
+      case .aiNote:
         return .none
         
       case let .playbackProgressUpdated(progress):
@@ -495,7 +527,10 @@ struct VoiceMemoDetailView: View {
 
         // 統合文字起こし結果セクション
         unifiedTranscriptionSection()
-        
+
+        // AIノートセクション（要約 + アクションアイテム / オンデバイス生成）
+        AINoteView(store: store.scope(state: \.aiNote, action: \.aiNote))
+
         // 追加録音セグメント表示
         if !store.memo.segments.isEmpty {
           segmentsSection()
