@@ -12,8 +12,8 @@
 //  Core Data ストアへ投入しておくこと。このテストは撮影と画面遷移だけを担当する。
 //
 //  AIノートは「保存済みを読み込んで表示」ではなく、その場で実際に生成させて撮る。
-//  理由: fetchVoiceMemo(id:) が aiTranscriptionText を復元していないため、
-//        詳細画面に入ると保存済みノートが空で表示される（issue #32）。
+//  もともとは issue #32（fetchVoiceMemo(id:) が aiTranscriptionText を復元しない）の
+//  回避策だったが、#32 修正後も「実際の生成結果を撮る」方が実物に忠実なのでこのままにしている。
 //
 //  撮った PNG は XCTAttachment として .xcresult に残す。ホスト側からは
 //  `xcrun xcresulttool export attachments` で取り出す（take_screenshots.sh がやる）。

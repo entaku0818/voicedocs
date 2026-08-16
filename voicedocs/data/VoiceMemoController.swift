@@ -40,10 +40,17 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
     let container: NSPersistentContainer
     private let fileManagerClient: FileManagerClient
 
-    init() {
+    // inMemory: true はテスト用。ストアを /dev/null に向けて端末のデータを汚さずに
+    // 本物の Core Data ↔ VoiceMemo 変換経路（fetchVoiceMemo など）を検証できるようにする。
+    init(inMemory: Bool = false) {
         // Live実装を直接使用（shared singletonパターンのため）
         self.fileManagerClient = FileManagerClient.live
         container = NSPersistentContainer(name: "VoiceMemoModel")
+        if inMemory {
+            container.persistentStoreDescriptions = [
+                NSPersistentStoreDescription(url: URL(fileURLWithPath: "/dev/null"))
+            ]
+        }
         container.loadPersistentStores { description, error in
             if let error = error {
                 fatalError("Unable to load persistent stores: \(error)")
@@ -620,9 +627,13 @@ struct VoiceMemoController:VoiceMemoControllerProtocol {
                 id: memoId,
                 title: memo.title ?? "",
                 text: memo.text ?? "",
+                aiTranscriptionText: memo.aiTranscriptionText ?? "",
                 date: memo.createdAt ?? Date()
             )
-            
+
+            // 動画ファイルパスを復元
+            voiceMemo.videoFilePath = memo.videoFilePath
+
             // 文字起こし関連情報を復元
             if let statusString = memo.transcriptionStatus {
                 voiceMemo.transcriptionStatus = TranscriptionStatus(rawValue: statusString) ?? .none
