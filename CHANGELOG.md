@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.8.0] - 2026-08-24
+
+### Added
+- AIノート機能（オンデバイス生成）
+  - 文字起こし結果から「要約」と「アクションアイテム」をワンタップで生成
+  - Apple FoundationModels によるオンデバイス推論。音声・文字起こしを外部送信しない
+  - Apple Intelligence 非対応端末では専用の案内を表示
+  - 生成結果は Core Data の `aiTranscriptionText` に永続化
+- ストア用スクリーンショットの自動生成の仕組み
+
+### Fixed
+- `fetchVoiceMemo(id:)` が保存済みAIノートを復元しないバグを修正
+
+### Changed
+- ストア文言を実際の機能に合わせて是正し、AIノートの説明を追記
+
 ## [Unreleased] - 次回リリース予定
 
 ### Added
