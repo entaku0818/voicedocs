@@ -21,3 +21,6 @@ firebase-debug.log
 # AI tool artifacts (AGENTS.md is an auto-generated copy of CLAUDE.md)
 .agents/
 AGENTS.md
+
+# Firebase Hosting deploy cache
+.firebase/
