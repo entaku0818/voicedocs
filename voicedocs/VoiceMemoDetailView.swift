@@ -513,6 +513,35 @@ struct VoiceMemoDetailView: View {
     self.onMemoUpdated = onMemoUpdated
     self._adManager = StateObject(wrappedValue: InterstitialAdManager(adUnitID: admobKey))
   }
+
+  /// AIノート生成の開始に合わせてインタースティシャルを表示する。
+  ///
+  /// 発火点をここにした理由:
+  /// - AIノート生成はユーザーが明示的にボタンを押して起動する重い処理で、
+  ///   オンデバイス生成の待ち時間がそのまま広告の尺になる（体験を止めない）。
+  /// - 録音中・文字起こし処理中は中核体験なので絶対に出さない（下のガード）。
+  ///
+  /// 生成自体は非同期に走り続けるので、広告の完了を待つ必要はない（completion は空）。
+  /// 実際に出すかどうかの最終判断は `AdPresentationCoordinator`（相互排他 + 表示間隔）が持つ。
+  @MainActor
+  private func maybeShowInterstitialAd(for status: AINoteFeature.State.Status) {
+    guard case .generating = status else { return }
+
+    // 録音中・文字起こし処理中は広告を出さない
+    let isTranscriptionRunning: Bool
+    switch store.backgroundTranscriptionState {
+    case .processing, .paused: isTranscriptionRunning = true
+    case .idle, .completed, .failed: isTranscriptionRunning = false
+    }
+    guard !store.additionalRecorderState.isRecording,
+          !store.isTranscribing,
+          !isTranscriptionRunning else {
+      AppLogger.ads.debug("Interstitial skipped: recording or transcription in progress")
+      return
+    }
+
+    adManager.showInterstitialAd { }
+  }
   
   var body: some View {
     ScrollView {
@@ -558,6 +587,9 @@ struct VoiceMemoDetailView: View {
     }
     .onDisappear {
       send(.onDisappear)
+    }
+    .onChange(of: store.aiNote.status) { _, newStatus in
+      maybeShowInterstitialAd(for: newStatus)
     }
     .sheet(isPresented: $store.showingShareSheet) {
       ShareSheet(items: createShareItems())

@@ -4,10 +4,12 @@ import UIKit
 class InterstitialAdManager: NSObject, ObservableObject {
     private var interstitialAd: GADInterstitialAd?
     private let adUnitID: String
+    private let coordinator: AdPresentationCoordinator
     @Published var isAdLoaded = false
     @Published var isAdLoading = false
     
-    init(adUnitID: String) {
+    init(adUnitID: String, coordinator: AdPresentationCoordinator = .shared) {
+        self.coordinator = coordinator
         print("🚀 Initializing InterstitialAdManager")
         print("📱 Ad Unit ID received: \(adUnitID)")
         
@@ -68,66 +70,70 @@ class InterstitialAdManager: NSObject, ObservableObject {
         }
     }
     
+    /// インタースティシャルを表示する。
+    ///
+    /// 表示可否は必ず `AdPresentationCoordinator` を通す（アプリ起動広告と2枚重ならないようにするため）。
+    /// 表示できない場合でも `completion` は必ず1回呼ばれる。
+    @MainActor
     func showInterstitialAd(completion: @escaping () -> Void) {
         print("🎬 Attempting to show interstitial ad...")
         print("📊 Ad loaded status: \(isAdLoaded)")
         print("📊 Ad loading status: \(isAdLoading)")
-        
+
+        guard coordinator.canPresent(.interstitial) else {
+            print("🚫 Interstitial blocked by AdPresentationCoordinator - executing completion directly")
+            completion()
+            return
+        }
+
         guard let interstitialAd = interstitialAd else {
             print("❌ Interstitial ad not loaded - executing completion directly")
             completion()
             return
         }
-        
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let rootViewController = windowScene.windows.first?.rootViewController else {
-            print("❌ Unable to find root view controller - executing completion directly")
+
+        guard let presenter = UIApplication.shared.topMostViewController() else {
+            print("❌ Unable to find presenting view controller - executing completion directly")
             completion()
             return
         }
-        
-        print("✅ Found root view controller, presenting ad...")
+
+        print("✅ Found presenting view controller, presenting ad...")
         // 広告表示後のコールバックを保存
         self.onAdDismissed = completion
-        
-        interstitialAd.present(fromRootViewController: rootViewController)
+        coordinator.willPresent(.interstitial)
+
+        interstitialAd.present(fromRootViewController: presenter)
     }
-    
+
     private var onAdDismissed: (() -> Void)?
+
+    /// 表示終了時の後始末。閉じられた場合も表示失敗の場合も必ずここを通す。
+    @MainActor
+    private func finishPresentation() {
+        coordinator.didDismiss(.interstitial)
+        interstitialAd = nil
+        isAdLoaded = false
+
+        onAdDismissed?()
+        onAdDismissed = nil
+
+        loadInterstitialAd()
+    }
 }
 
 // MARK: - GADFullScreenContentDelegate
 extension InterstitialAdManager: GADFullScreenContentDelegate {
     func adDidDismissFullScreenContent(_ ad: GADFullScreenPresentingAd) {
         print("📱 Interstitial ad dismissed by user")
-        interstitialAd = nil
-        isAdLoaded = false
-        
-        // 広告が閉じられた後にコールバックを実行
-        print("🔄 Executing completion callback...")
-        onAdDismissed?()
-        onAdDismissed = nil
-        
-        // 次の広告を読み込み
-        print("🔄 Loading next interstitial ad...")
-        loadInterstitialAd()
+        MainActor.assumeIsolated { finishPresentation() }
     }
-    
+
     func ad(_ ad: GADFullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
         print("❌ Interstitial ad failed to present")
         print("❌ Presentation error: \(error.localizedDescription)")
         print("❌ Error code: \(error._code)")
-        interstitialAd = nil
-        isAdLoaded = false
-        
-        // エラーの場合もコールバックを実行
-        print("🔄 Executing completion callback after error...")
-        onAdDismissed?()
-        onAdDismissed = nil
-        
-        // 次の広告を読み込み
-        print("🔄 Loading next interstitial ad after error...")
-        loadInterstitialAd()
+        MainActor.assumeIsolated { finishPresentation() }
     }
     
     func adWillPresentFullScreenContent(_ ad: GADFullScreenPresentingAd) {

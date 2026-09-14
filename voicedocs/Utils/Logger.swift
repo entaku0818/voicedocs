@@ -29,5 +29,8 @@ struct AppLogger {
     
     /// 再生関連のログ
     static let playback = Logger(subsystem: subsystem, category: "Playback")
+    
+    /// 広告関連のログ
+    static let ads = Logger(subsystem: subsystem, category: "Ads")
 }
 
