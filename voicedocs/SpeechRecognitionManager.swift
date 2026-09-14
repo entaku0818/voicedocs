@@ -104,7 +104,10 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
 
     // MARK: - Published Properties
     @Published var transcribedText: String = ""
-    @Published var isTranscribing: Bool = false
+    // 広告側が「いま文字起こし中か」を見られるようにレジストリへ申告する
+    @Published var isTranscribing: Bool = false {
+        didSet { AudioActivityRegistry.shared.update(isActive: isTranscribing, for: self) }
+    }
     @Published var currentLanguage: SpeechLanguage = .japanese
     @Published var recognitionQuality: Float = 0.0
     @Published var lastError: SpeechRecognitionError?
@@ -134,6 +137,10 @@ class SpeechRecognitionManager: NSObject, ObservableObject, SFSpeechRecognizerDe
         Task {
             await requestPermissionsIfNeeded()
         }
+    }
+
+    deinit {
+        AudioActivityRegistry.shared.update(isActive: false, id: ObjectIdentifier(self))
     }
     
     private func requestPermissionsIfNeeded() async {

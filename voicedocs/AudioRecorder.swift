@@ -61,7 +61,10 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     private let voiceMemoController = VoiceMemoController.shared
     private let fileManagerClient = FileManagerClient.live
 
-    @Published var isRecording: Bool = false
+    // 広告側が「いま録音中か」を見られるようにレジストリへ申告する（全画面広告を録音にかぶせないため）
+    @Published var isRecording: Bool = false {
+        didSet { AudioActivityRegistry.shared.update(isActive: isRecording, for: self) }
+    }
     @Published var recordingDuration: TimeInterval = 0
     @Published var audioLevel: Float = 0.0
     @Published var recordingQuality: RecordingQuality = .high
@@ -74,6 +77,7 @@ class AudioRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+        AudioActivityRegistry.shared.update(isActive: false, id: ObjectIdentifier(self))
     }
 
     private func setupRecordingSession() {
