@@ -1,9 +1,4 @@
-Added AI Notes.
+Stability improvements.
 
-- Create a summary and action items from your transcript with a single tap
-- Generated entirely on your device. Your audio and transcript are not sent to a server to be summarized
-- No account required, no extra charge
-
-* AI Notes require a device that supports Apple Intelligence
-
-We also updated the app description to match what the app actually does.
+- Fixed a problem where ads were not displayed correctly
+- Improved behavior while recording and transcribing
