@@ -9,7 +9,7 @@
 	<key>ADMOB_APP_OPEN_KEY</key>
 	<string>$(ADMOB_APP_OPEN_KEY)</string>
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>ca-app-pub-3484697221349891~7991961384</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs access to the microphone to record voice memos.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

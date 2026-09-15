@@ -19,7 +19,7 @@ struct BannerAdView: UIViewRepresentable {
         
         // デバッグ用のテスト広告IDを使用
         #if DEBUG
-        let testAdUnitID = "ca-app-pub-3940256099942544/2934735716" // Google提供のテスト用バナーID
+        let testAdUnitID = AdMobTestIdentifiers.Debug.banner // Google提供のテスト用バナーID
         bannerView.adUnitID = testAdUnitID
         print("🧪 Using test banner ad unit ID: \(testAdUnitID)")
         #else
