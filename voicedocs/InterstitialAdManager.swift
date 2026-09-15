@@ -15,7 +15,7 @@ class InterstitialAdManager: NSObject, ObservableObject {
         
         // 開発中はテスト用Ad Unit IDを使用
         #if DEBUG
-        self.adUnitID = "ca-app-pub-3940256099942544/4411468910" // Google提供のテスト用インタースティシャルID
+        self.adUnitID = AdMobTestIdentifiers.Debug.interstitial // Google提供のテスト用インタースティシャルID
         print("🧪 Using test ad unit ID for DEBUG: \(self.adUnitID)")
         #else
         self.adUnitID = adUnitID

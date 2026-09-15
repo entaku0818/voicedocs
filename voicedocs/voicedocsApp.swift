@@ -11,10 +11,41 @@ import os.log
 import GoogleMobileAds
 
 class AppDelegate: NSObject, UIApplicationDelegate {
+  /// アプリ起動（App Open）広告。ユニットIDが未設定なら自動的に無効になる。
+  private var appOpenAdManager: AppOpenAdManager?
+
   func application(_ application: UIApplication,
                    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
       FirebaseApp.configure()
-      GADMobileAds.sharedInstance().start(completionHandler: nil)
+
+      #if DEBUG
+      // 開発中は本番の広告を配信させない（無効traffic防止）
+      let appOpenAdUnitID = AdMobTestIdentifiers.Debug.appOpen
+      #else
+      let appOpenAdUnitID = AdMobKeys.load().appOpenAdUnitID
+      #endif
+      let appOpenAdManager = AppOpenAdManager(adUnitID: appOpenAdUnitID)
+      self.appOpenAdManager = appOpenAdManager
+
+      // App Open はロードに1〜2秒かかるので、SDKの初期化完了を待ってから機会を判定する。
+      GADMobileAds.sharedInstance().start { _ in
+          Task { @MainActor in
+              await appOpenAdManager.showIfEligible()
+          }
+      }
+
+      // フォアグラウンド復帰時。`didBecomeActive` ではなく `willEnterForeground` を使うのは、
+      // マイク権限ダイアログなどを閉じただけで誤発火させないため。
+      NotificationCenter.default.addObserver(
+          forName: UIApplication.willEnterForegroundNotification,
+          object: nil,
+          queue: .main
+      ) { _ in
+          Task { @MainActor in
+              await appOpenAdManager.showIfEligible()
+          }
+      }
+
     #if DEBUG
       if FirebaseApp.app() != nil {
           AppLogger.ui.info("Firebase has been successfully configured.")
@@ -35,46 +66,16 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 struct SpeechRecognitionApp: App {
   @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
-    var admobUnitId: String!
-    var admobBannerUnitId: String!
+    private let admobConfig: AdMobConfig
+
     init() {
-        let environmentConfig = loadEnvironmentVariables()
-        self.admobUnitId = environmentConfig.admobKey
-        self.admobBannerUnitId = environmentConfig.admobBannerKey
+        self.admobConfig = AdMobKeys.load()
     }
 
     var body: some Scene {
         WindowGroup {
             VoiceMemoListView(voiceMemoController: VoiceMemoController())
-                .environment(\.admobConfig, AdMobConfig(
-                    interstitialAdUnitID: admobUnitId,
-                    bannerAdUnitID: admobBannerUnitId
-                ))
+                .environment(\.admobConfig, admobConfig)
         }
     }
 }
-
-extension SpeechRecognitionApp {
-    func loadEnvironmentVariables() -> EnvironmentConfig {
-        let bundleAdmobKey = Bundle.main.object(forInfoDictionaryKey: "ADMOB_KEY") as? String
-        let bundleAdmobBannerKey = Bundle.main.object(forInfoDictionaryKey: "ADMOB_BANNER_KEY") as? String
-        let processAdmobKey = ProcessInfo.processInfo.environment["ADMOB_KEY"]
-        let processAdmobBannerKey = ProcessInfo.processInfo.environment["ADMOB_BANNER_KEY"]
-        
-        guard let admobKey = bundleAdmobKey ?? processAdmobKey else {
-            fatalError("ADMOB_KEY environment variable is missing")
-        }
-        
-        guard let admobBannerKey = bundleAdmobBannerKey ?? processAdmobBannerKey else {
-            fatalError("ADMOB_BANNER_KEY environment variable is missing")
-        }
-        
-        return EnvironmentConfig(admobKey: admobKey, admobBannerKey: admobBannerKey)
-    }
-
-    struct EnvironmentConfig {
-        let admobKey: String
-        let admobBannerKey: String
-    }
-}
-
