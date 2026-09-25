@@ -24,15 +24,24 @@ jobs:
     runs-on: [self-hosted, macOS, xcode27]
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Build & test
         run: scripts/ios-ci.sh
 
       - name: Upload xcresult
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: TestResults-${{ github.run_id }}
           path: build/ci/TestResults.xcresult
           if-no-files-found: ignore
+
+      # runner のディスク逼迫対策。DerivedData / xcresult は毎回作り直すので、upload の後に消す。
+      # 専用シミュレータ CI-voicedocs は次回再利用するので削除せず shutdown のみ。
+      # SPM キャッシュ（~/Library/Caches/org.swift.swiftpm）は全リポジトリ共有なので触らない。
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -rf build/ci/DerivedData build/ci/TestResults.xcresult
+          xcrun simctl shutdown CI-voicedocs 2>/dev/null || true
