@@ -16,6 +16,9 @@ claude --dangerously-skip-permissions
 
 ### Building and Running
 
+**Xcode バージョン**: Xcode 26.5（デフォルトの `xcode-select`）と Xcode 27.0 の両方でビルド・テストが通る状態を維持する。
+Xcode 27 で実行する場合は `xcode-select` を変えず、コマンドの頭に `DEVELOPER_DIR=/Applications/Xcode-27.0.0.app/Contents/Developer` を付ける（テストは iOS 27.0 シミュレータを指定）。
+
 ```bash
 # Build the project (ALWAYS RUN THIS AFTER MAKING CODE CHANGES)
 # Note: -skipMacroValidation is required for ComposableArchitecture macros to work correctly
