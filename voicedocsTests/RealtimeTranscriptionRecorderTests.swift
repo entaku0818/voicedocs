@@ -7,6 +7,8 @@
 
 import XCTest
 import Combine
+import AVFAudio
+import Speech
 @testable import voicedocs
 
 @MainActor
@@ -31,6 +33,14 @@ final class RealtimeTranscriptionRecorderTests: XCTestCase {
         try await super.tearDown()
     }
 
+    /// 権限が未許可のまま startRecording() を呼ぶと許可ダイアログ待ちでハングするため、事前にスキップする
+    private func skipUnlessRecordingPermissionsGranted() throws {
+        guard AVAudioApplication.shared.recordPermission == .granted,
+              SFSpeechRecognizer.authorizationStatus() == .authorized else {
+            throw XCTSkip("Skipping test - microphone or speech recognition permission not granted")
+        }
+    }
+
     // MARK: - Recording Duration Timer Tests
 
     func testRecordingDurationInitialValue() {
@@ -41,6 +51,8 @@ final class RealtimeTranscriptionRecorderTests: XCTestCase {
     }
 
     func testRecordingDurationUpdatesWhenRecording() async throws {
+        try skipUnlessRecordingPermissionsGranted()
+
         // Given: A recorder instance
         let expectation = XCTestExpectation(description: "Recording duration updates")
         var durations: [TimeInterval] = []
@@ -84,6 +96,8 @@ final class RealtimeTranscriptionRecorderTests: XCTestCase {
     }
 
     func testRecordingDurationResetsAfterStop() async throws {
+        try skipUnlessRecordingPermissionsGranted()
+
         // Given: A recording has been made
         do {
             try await sut.startRecording()
@@ -110,6 +124,8 @@ final class RealtimeTranscriptionRecorderTests: XCTestCase {
     }
 
     func testRecordingTimerRunsOnMainThread() async throws {
+        try skipUnlessRecordingPermissionsGranted()
+
         // Given: A recorder instance
         let expectation = XCTestExpectation(description: "Timer callback runs on main thread")
 
