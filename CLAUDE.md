@@ -163,8 +163,13 @@ Single entity **VoiceMemoModel**:
 
 ### CI/CD
 
-- Xcode Cloud configuration in `ci_scripts/ci_post_clone.sh`
-- Disables macro fingerprint validation for consistent builds
+- iOS の build / unit test は GitHub Actions の self-hosted runner（entaku の Mac, labels `self-hosted, macOS, xcode27`）で回す: `.github/workflows/ios-ci.yml` → `scripts/ios-ci.sh`
+  - ローカル再現: `DEVELOPER_DIR=/Applications/Xcode-27.0.0.app/Contents/Developer scripts/ios-ci.sh`
+  - 専用シミュレータ `CI-voicedocs`（iOS 27.0）・DerivedData は `build/ci/` 配下。マクロ fingerprint 検証の無効化もここで行う
+  - `Prod.xcconfig` が無ければ空値のダミーを生成（AdMob の本番ユニットID検証テストはその場合だけ skip）
+- **GitHub-hosted の macOS ランナー（`macos-*`）は課金のため禁止。iOS ジョブは self-hosted の `ios-ci.yml` のみ可**
+- SwiftLint は `.github/workflows/ci.yml`（ubuntu）
+- Xcode Cloud は廃止（2026-09-25）
 
 ## App Store リリース手順
 

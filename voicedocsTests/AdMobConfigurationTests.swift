@@ -24,6 +24,14 @@ final class AdMobConfigurationTests: XCTestCase {
         Bundle.main.object(forInfoDictionaryKey: key) as? String
     }
 
+    /// CI（scripts/ios-ci.sh）は gitignore の Prod.xcconfig を空値のダミーで生成するため、
+    /// xcconfig 由来のユニットIDを検証するテストはその場合に限りスキップする
+    private func skipIfCIDummyXcconfig() throws {
+        if ProcessInfo.processInfo.environment["VOICEDOCS_CI_DUMMY_XCCONFIG"] == "1" {
+            throw XCTSkip("CI のダミー Prod.xcconfig ではユニットIDが空のためスキップ")
+        }
+    }
+
     // MARK: - アプリID
 
     func testGADApplicationIdentifier_isProductionAppID() {
@@ -44,7 +52,8 @@ final class AdMobConfigurationTests: XCTestCase {
     // MARK: - 広告ユニットID
 
     /// 3フォーマット分のユニットIDが揃っていて、すべて本番パブリッシャ配下であること
-    func testAdUnitIDs_areAllProductionAndNonEmpty() {
+    func testAdUnitIDs_areAllProductionAndNonEmpty() throws {
+        try skipIfCIDummyXcconfig()
         let units = [
             "ADMOB_KEY": "ca-app-pub-3484697221349891/1059868285",
             "ADMOB_BANNER_KEY": "ca-app-pub-3484697221349891/2727572784",
@@ -62,7 +71,8 @@ final class AdMobConfigurationTests: XCTestCase {
     }
 
     /// アプリIDとユニットIDのパブリッシャが一致していること（今回の事故の本質）
-    func testAppIDAndAdUnitIDs_shareTheSamePublisher() {
+    func testAppIDAndAdUnitIDs_shareTheSamePublisher() throws {
+        try skipIfCIDummyXcconfig()
         let appID = infoPlistValue("GADApplicationIdentifier") ?? ""
         XCTAssertTrue(appID.hasPrefix(productionPublisher), "アプリIDのパブリッシャが違う: \(appID)")
 
@@ -115,7 +125,8 @@ final class AdMobConfigurationTests: XCTestCase {
     // MARK: - 読み込み
 
     /// `AdMobKeys.load()` が Info.plist の3つを読めていること
-    func testLoad_readsAllThreeUnitsFromInfoPlist() {
+    func testLoad_readsAllThreeUnitsFromInfoPlist() throws {
+        try skipIfCIDummyXcconfig()
         let config = AdMobKeys.load()
 
         XCTAssertFalse(config.interstitialAdUnitID.isEmpty)

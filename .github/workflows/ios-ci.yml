@@ -1,0 +1,38 @@
+name: iOS CI
+
+# entaku の Mac に登録した self-hosted runner で build / unit test を回す。
+# GitHub-hosted の macos-* ランナーは課金のため使わない（self-hosted のこのワークフローのみ可）。
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build & Unit Test (Xcode 27)
+    # public リポジトリなのでフォーク PR では self-hosted runner を動かさない
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, macOS, xcode27]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build & test
+        run: scripts/ios-ci.sh
+
+      - name: Upload xcresult
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TestResults-${{ github.run_id }}
+          path: build/ci/TestResults.xcresult
+          if-no-files-found: ignore
